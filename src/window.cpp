@@ -2,7 +2,6 @@
 #include <glfw/glfw3.h>
 #include <glad/glad.h>
 #include <libgen.h>
-#include <mach-o/dyld.h>
 
 #include "shader.h"
 #include "stb_image.h"
@@ -17,16 +16,6 @@ void processInput(GLFWwindow* window);
 
 const unsigned int SCR_WDTH = 800;
 const unsigned int SCR_HGHT = 600;
-
-// helper method to get file path
-std::string getExecutableDir() {
-    char path[1024];
-    uint32_t size = sizeof(path);
-    if (_NSGetExecutablePath(path, &size) == 0) {
-        return std::string(dirname(path)) + "/";
-    }
-    return "./";
-};
 
 int main() {
     glfwInit();
@@ -51,13 +40,6 @@ int main() {
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
     glEnable(GL_DEPTH);
-
-    std::string base = getExecutableDir();
-    Shader ourShader((base + "shader.vs").c_str(), (base + "shader.fs").c_str());
-
-    float vertices[] {
-
-    };
 }
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
