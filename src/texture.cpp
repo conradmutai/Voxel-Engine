@@ -30,12 +30,20 @@ Texture::Texture(const std::string filepath) {
     unsigned char* data = stbi_load(filepath.c_str(), &texWidth, &texHeight, &nrChannels, 0);
     
     if(data) {
-        GLenum format = (nrChannels == 4) ? GL_RGBA : GL_RGB;
+        GLenum format;
+
+        if (nrChannels == 4) {
+            format = GL_RGBA;
+        } else {
+            format = GL_RGB;
+        }
+
         glTexImage2D(GL_TEXTURE_2D, 0, format, texWidth, texHeight, 0, format, GL_UNSIGNED_BYTE, data);
         glGenerateMipmap(GL_TEXTURE_2D);
     } else {
         std::cout << "Failed to load texture at: " << filepath << std::endl;
     }
+    
     stbi_image_free(data);
 }
 

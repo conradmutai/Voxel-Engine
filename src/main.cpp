@@ -53,55 +53,55 @@ int main() {
 
     // 5. Create cubes and indices
     float vertices[] {
-        // vertex points       // texture coords
-        -0.5f, -0.5f, -0.5f,    0.0f, 0.0f,      // face 1, bottom left corner, triangle 1
-        -0.5f,  0.5f, -0.5f,    0.0f, 1.0f,      // face 1, top left corner, triangle 1
-         0.5f, -0.5f, -0.5f,    1.0f, 0.0f,      // face 1, bottom right corner, triangle 1
-         0.5f, -0.5f, -0.5f,    1.0f, 0.0f,      // face 1, bottom right corner, triagnle 2
-         0.5f,  0.5f, -0.5f,    1.0f, 1.0f,      // face 1, top right corner, triangle 2
-        -0.5f,  0.5f, -0.5f,    0.0f, 1.0f,      // face 1, top left corner, triangle 2
+        // vertex points      // texture coords
+        -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
+        0.5f, -0.5f, -0.5f,   1.0f, 0.0f,
+        0.5f,  0.5f, -0.5f,   1.0f, 1.0f,
+        0.5f,  0.5f, -0.5f,   1.0f, 1.0f,
+        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
 
-        -0.5f,  0.5f, -0.5f,    0.0f, 1.0f,      // face 2, top right corner, triangle 3
-        -0.5f, -0.5f, -0.5f,    0.0f, 0.0f,      // face 2, bottom right corner, triangle 3
-         0.5f, -0.5f,  0.5f,    1.0f, 0.0f,      // face 2, bottom left corner, triangle 3
-         0.5f, -0.5f,  0.5f,    1.0f, 0.0f,      // face 2, bottom left corner, triangle 4
-         0.5f,  0.5f,  0.5f,    1.0f, 1.0f,      // face 2, top left corner, triangle 4
-        -0.5f,  0.5f, -0.5f,    0.0f, 1.0f,      // face 2, top right corner, triangle 4
+        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+        0.5f, -0.5f,  0.5f,   1.0f, 0.0f,
+        0.5f,  0.5f,  0.5f,   1.0f, 1.0f,
+        0.5f,  0.5f,  0.5f,   1.0f, 1.0f,
+        -0.5f,  0.5f,  0.5f,  0.0f, 1.0f,
+        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
 
-         0.5f, -0.5f,  0.5f,    1.0f, 0.0f,      // face 3, bottom left corner, triangle 5
-         0.5f,  0.5f,  0.5f,    1.0f, 1.0f,      // face 3, top left corner, triangle 5
-        -0.5f, -0.5f,  0.5f,    0.0f, 0.0f,      // face 3, bottom right corner, triangle 5
-        -0.5f, -0.5f,  0.5f,    0.0f, 0.0f,      // face 3, bottom right corner, triangle 6
-        -0.5f,  0.5f,  0.5f,    0.0f, 1.0f,      // face 3, top right corner, triangle 6
-         0.5f, -0.5f,  0.5f,    1.0f, 0.0f,      // face 3, bottom left corner, triangle 6
+        -0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+        -0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+        -0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
 
-         0.5f, -0.5f,  0.5f,    1.0f, 0.0f,      // face 4, bottom left corner, triangle 7
-         0.5f,  0.5f,  0.5f,    1.0f, 1.0f,      // face 4, top left corner, triangle 7
-        -0.5f, -0.5f, -0.5f,    0.0f, 0.0f,      // face 4, bottom right corner, triangle 7
-        -0.5f, -0.5f, -0.5f,    0.0f, 0.0f,      // face 4, bottom right corner, triangle 8
-        -0.5f,  0.5f, -0.5f,    0.0f, 1.0f,      // face 4, top right corner, triangle 8
-         0.5f,  0.5f,  0.5f,    1.0f, 1.0f,      // face 4, top left corner, triangle 8
+        0.5f,  0.5f,  0.5f,   1.0f, 0.0f,
+        0.5f,  0.5f, -0.5f,   1.0f, 1.0f,
+        0.5f, -0.5f, -0.5f,   0.0f, 1.0f,
+        0.5f, -0.5f, -0.5f,   0.0f, 1.0f,
+        0.5f, -0.5f,  0.5f,   0.0f, 0.0f,
+        0.5f,  0.5f,  0.5f,   1.0f, 0.0f,
+ 
+        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+        0.5f, -0.5f, -0.5f,   1.0f, 1.0f,
+        0.5f, -0.5f,  0.5f,   1.0f, 0.0f,
+        0.5f, -0.5f,  0.5f,   1.0f, 0.0f,
+        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
 
-         0.5f,  0.5f,  0.5f,    1.0f, 1.0f,      // face 5, triangle 9
-        -0.5f,  0.5f,  0.5f,    0.0f, 1.0f,      // face 5, triangle 9
-        -0.5f,  0.5f, -0.5f,    0.0f, 1.0f,      // face 5, triangle 9
-        -0.5f,  0.5f, -0.5f,    0.0f, 1.0f,      // face 5, triangle 10
-         0.5f,  0.5f, -0.5f,    1.0f, 1.0f,      // face 5, triangle 10
-        -0.5f,  0.5f,  0.5f,    0.0f, 1.0f,      // face 5, triangle 10
-        
-         0.5f, -0.5f,  0.5f,    1.0f, 0.0f,      // face 6, triangle 11
-        -0.5f, -0.5f,  0.5f,    0.0f, 0.0f,      // face 6, triangle 11
-        -0.5f, -0.5f, -0.5f,    0.0f, 0.0f,      // face 6, triangle 11
-        -0.5f, -0.5f, -0.5f,    0.0f, 0.0f,      // face 6, triangle 12
-         0.5f, -0.5f, -0.5f,    1.0f, 0.0f,      // face 6, triangle 12
-        -0.5f, -0.5f,  0.5f,    0.0f, 0.0f,      // face 6, triangle 12
+        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
+        0.5f,  0.5f, -0.5f,   1.0f, 1.0f,
+        0.5f,  0.5f,  0.5f,   1.0f, 0.0f,
+        0.5f,  0.5f,  0.5f,   1.0f, 0.0f,
+        -0.5f,  0.5f,  0.5f,  0.0f, 0.0f,
+        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f
     };
     unsigned int indices[] {
         0, 1, 3,
         1, 2, 3
     };
     
-    unsigned int VBO, VAO;
+    unsigned int VBO, VAO, EBO;
 
     glGenVertexArrays(1, &VAO);
     glBindVertexArray(VAO);
@@ -109,6 +109,10 @@ int main() {
     glGenBuffers(1, &VBO);
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+    glGenBuffers(1, &EBO);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
     // 6. Pushing data to the GPU
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*) 0);

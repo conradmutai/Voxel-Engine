@@ -30,6 +30,7 @@ Window::Window(int width, int height, const char* title) {
         glfwTerminate();
         return;
     }
+    
     glfwMakeContextCurrent(window); // make the current context the window we created for glfw meaning it is targetting this
 
     // Checks if GLAD can be initializes
@@ -39,7 +40,7 @@ Window::Window(int width, int height, const char* title) {
     }
 
     // Prevents permeability
-    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_DEPTH);
 }
 
 
