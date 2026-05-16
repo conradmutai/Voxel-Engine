@@ -25,32 +25,6 @@ std::string getExecutableDir() {
 
 Texture::Texture(const std::string filepath) {
     std::string base = getExecutableDir();
-    Shader ourShader((base + "shader.vs").c_str(), (base + "shader.fs").c_str());
-
-    float vertices[] {
-
-    };
-    unsigned int indices[] {
-        0, 1, 3,
-        1, 2, 3
-    };
-    
-    unsigned int VBO, VAO, EBO;
-
-    glGenVertexArrays(1, &VAO);
-    glBindVertexArray(VAO);
-
-    glGenBuffers(1, &VBO);
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, VBO);
-
-    glGenBuffers(1, &EBO);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, EBO);
-
-    glGenTextures(1, &ID);
-    glActiveTexture(ID);
-    glBindTexture(GL_TEXTURE_2D, ID);
     
     // Provides voxel aesthetic
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
