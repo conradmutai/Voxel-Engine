@@ -7,8 +7,8 @@
 #include <glm/gtc/matrix_transform.hpp>
 
 // default camera movement
-const float PITCH = -90.0f;
-const float YAW = 0.0f;
+const float PITCH = 0.0f;
+const float YAW = -90.0f;
 const float SPEED = 2.5f;
 const float SENSITIVITY = 0.1f;
 const float ZOOM = 45.0f;
@@ -58,7 +58,7 @@ class Camera {
             return glm::lookAt(Position, Position + Front, Up);
         }
         
-        void processInput(Camera_Movement direction, float deltaTime) {
+        void ProcessKeyboard(Camera_Movement direction, float deltaTime) {
             float cameraSpeed = 2.5f * deltaTime;
             float velocity = MovementSpeed * deltaTime;
             if (direction == FORWARD)

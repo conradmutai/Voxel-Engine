@@ -1,5 +1,5 @@
 #define GLFW_INCLUDE_NONE
-#include <glfw/glfw3.h>
+#include <GLFW/glfw3.h>
 #include <glad/glad.h>
 #include <libgen.h>
 #include <mach-o/dyld.h>
@@ -24,12 +24,23 @@ std::string getExecutableDir() {
     return "./";
 };
 
-const float FOV = 45.0f;
-const float ASPECT = 800.0f / 600.0f;
+// Global Camera and Time state
+Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
+float deltaTime = 0.0f; // Time between current frame and last frame
+float lastFrame = 0.0f; // Time of last frame
+
+// Global Mouse state
+bool firstMouse = true;
+float lastX = 1600.0f / 2.0f; // Center of your Retina screen
+float lastY = 1200.0f / 2.0f;
+
+void mouse_callback(GLFWwindow* window, double xposIn, double yposIn);
+
+void processInput(GLFWwindow *window);
 
 int main() {
     // 1. Creates window
-    Window window = Window(800, 600, "VOXEL ENGINE - VERSION 1.0.0");
+    Window window(1600, 1200, "VOXEL ENGINE - VERSION 1.0.0");
 
     // 2. Establish base file path
     std::string base = getExecutableDir();
@@ -90,18 +101,14 @@ int main() {
         1, 2, 3
     };
     
-    unsigned int VBO, VAO, EBO;
+    unsigned int VBO, VAO;
 
     glGenVertexArrays(1, &VAO);
     glBindVertexArray(VAO);
 
     glGenBuffers(1, &VBO);
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, VBO);
-
-    glGenBuffers(1, &EBO);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, EBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
     // 6. Pushing data to the GPU
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*) 0);
@@ -110,39 +117,77 @@ int main() {
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*) (3 * sizeof(float)));
     glEnableVertexAttribArray(1);
 
-    // 7. Initializes up the camera
-    Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
-
-    // 8. game loop
+    // 7. game loop
     while(!window.shouldClose()) {
+        // Per-frame time logic
+        float currentFrame = static_cast<float>(glfwGetTime());
+        deltaTime = currentFrame - lastFrame;
+        lastFrame = currentFrame;
+
+        // Input processing
+        processInput(window.getRawPointer());
+
+        // Render clearing
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        // Bind Shader & Matrices
+        // Bind Shader
         ourShader.use();
 
-        // (You would calculate View & Projection matrices here)
-        glm::mat4 model = glm::mat4(1.0f);
+        // Pass matrices to shader
+        glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), 1600.0f / 1200.0f, 0.1f, 100.0f);
+        ourShader.setMat4("projection", projection);
+
         glm::mat4 view = camera.GetViewMatrix();
-        glm::mat4 proj;
-        proj = glm::perspective(glm::radians(FOV), ASPECT, 0.1f, 100.0f);
+        ourShader.setMat4("view", view);
 
-        unsigned int modelLoc = glGetUniformLocation(ourShader.ID, "model");
-        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+        glm::mat4 model = glm::mat4(1.0f); // Static cube at 0,0,0
+        ourShader.setMat4("model", model);
 
-        unsigned int viewLoc = glGetUniformLocation(ourShader.ID, "view");
-        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
-
-        ourShader.setMat4("projection", proj);
-
-        // Bind Texture & Draw
+        // Bind Texture and Draw
         dirtTexture.bind();
         glBindVertexArray(VAO);
         glDrawArrays(GL_TRIANGLES, 0, 36);
-        glDrawElements(GL_TRIANGLES, 8, GL_FLOAT, indices);
 
-        // Swap buffers and poll OS events
+        // Swap buffers & poll events
         window.swapBuffers();
         window.pollEvents();
     }
+
+    return 0;
+}
+
+void mouse_callback(GLFWwindow* window, double xposIn, double yposIn) {
+    float xpos = static_cast<float>(xposIn);
+    float ypos = static_cast<float>(yposIn);
+
+    if (firstMouse) {
+        lastX = xpos;
+        lastY = ypos;
+        firstMouse = false;
+    }
+
+    float xoffset = xpos - lastX;
+    float yoffset = lastY - ypos; // Reversed since Y-coordinates go from bottom to top
+
+    lastX = xpos;
+    lastY = ypos;
+
+    camera.ProcessMouseMovement(xoffset, yoffset);
+}
+
+void processInput(GLFWwindow *window) {
+    // Exit game with Escape
+    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+        glfwSetWindowShouldClose(window, true);
+
+    // WASD Movement
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+        camera.ProcessKeyboard(FORWARD, deltaTime);
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+        camera.ProcessKeyboard(BACKWARD, deltaTime);
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+        camera.ProcessKeyboard(LEFT, deltaTime);
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+        camera.ProcessKeyboard(RIGHT, deltaTime);
 }

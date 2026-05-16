@@ -8,6 +8,9 @@ public:
     // Constructor 
     Window(int width, int height, const char* title);
 
+    // Destructor
+    ~Window();
+
     // Standard game loop methods
     bool shouldClose();
     void swapBuffers();

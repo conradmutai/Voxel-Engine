@@ -6,7 +6,7 @@ class Texture {
 public:
     Texture(std::string filepath);
 
-    // Destructor (you will eventually want this to call glDeleteTextures)
+    // Destructor 
     ~Texture();
     void bind();
     unsigned int ID;

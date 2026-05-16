@@ -1,5 +1,5 @@
 #define GLFW_INCLUDE_NONE
-#include <glfw/glfw3.h>
+#include <GLFW/glfw3.h>
 #include <glad/glad.h>
 #include <libgen.h>
 
@@ -17,17 +17,17 @@ Window::Window(int width, int height, const char* title) {
     glfwInit();
 
     // Set the version to GLFW 4.1
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 4);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 1);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
 
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE); // ESSENTIAL FOR MAC
 
     // Initalize the window
-    GLFWwindow* window = glfwCreateWindow(width, height, title, NULL, NULL);
+    window = glfwCreateWindow(width, height, title, NULL, NULL);
     if (window == NULL) {
         std::cout << "FAILED TO CREATE WINDOW" <<  std::endl;
-        glfwTerminate;
+        glfwTerminate();
         return;
     }
     glfwMakeContextCurrent(window); // make the current context the window we created for glfw meaning it is targetting this
@@ -39,7 +39,7 @@ Window::Window(int width, int height, const char* title) {
     }
 
     // Prevents permeability
-    glEnable(GL_DEPTH);
+    glEnable(GL_DEPTH_TEST);
 }
 
 
