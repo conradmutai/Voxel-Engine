@@ -40,7 +40,7 @@ Window::Window(int width, int height, const char* title) {
     }
 
     // Prevents permeability
-    glEnable(GL_DEPTH);
+    glEnable(GL_DEPTH_TEST);
 }
 
 

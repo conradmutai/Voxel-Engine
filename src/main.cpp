@@ -31,16 +31,20 @@ float lastFrame = 0.0f; // Time of last frame
 
 // Global Mouse state
 bool firstMouse = true;
-float lastX = 1600.0f / 2.0f; // Center of your Retina screen
-float lastY = 1200.0f / 2.0f;
+float lastX = 800.0f / 2.0f; // Center of your Retina screen
+float lastY = 600.0f / 2.0f;
 
 void mouse_callback(GLFWwindow* window, double xposIn, double yposIn);
-
+void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 void processInput(GLFWwindow *window);
 
 int main() {
     // 1. Creates window
-    Window window(1600, 1200, "VOXEL ENGINE - VERSION 1.0.0");
+    Window window(800, 600, "VOXEL ENGINE - VERSION 1.0.0");
+
+    glfwSetInputMode(window.getRawPointer(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    glfwSetCursorPosCallback(window.getRawPointer(), mouse_callback);
+    glfwSetScrollCallback(window.getRawPointer(), scroll_callback);
 
     // 2. Establish base file path
     std::string base = getExecutableDir();
@@ -128,7 +132,7 @@ int main() {
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
 
-        // Input processing
+        // Process keyboard inputs
         processInput(window.getRawPointer());
 
         // Render clearing
@@ -139,7 +143,7 @@ int main() {
         ourShader.use();
 
         // Pass matrices to shader
-        glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), 1600.0f / 1200.0f, 0.1f, 100.0f);
+        glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), 800.0f / 600.0f, 0.1f, 100.0f);
         ourShader.setMat4("projection", projection);
 
         glm::mat4 view = camera.GetViewMatrix();
@@ -159,6 +163,10 @@ int main() {
     }
 
     return 0;
+}
+
+void scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
+    camera.ProcessMouseScroll(static_cast<float>(yoffset));
 }
 
 void mouse_callback(GLFWwindow* window, double xposIn, double yposIn) {
