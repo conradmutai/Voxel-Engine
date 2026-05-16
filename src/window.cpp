@@ -3,6 +3,7 @@
 #include <glad/glad.h>
 #include <libgen.h>
 
+#include "window.h"
 #include "shader.h"
 #include "stb_image.h"
 #include "camera.h"
@@ -11,43 +12,52 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/geometric.hpp>
 
-void framebuffer_size_callback(GLFWwindow* window, int width, int height);
-void processInput(GLFWwindow* window);
-
-const unsigned int SCR_WDTH = 800;
-const unsigned int SCR_HGHT = 600;
-
-int main() {
+Window::Window(int width, int height, const char* title) {
+    // intialize GLFW
     glfwInit();
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 
-    GLFWwindow* window = glfwCreateWindow(SCR_WDTH, SCR_HGHT, "VOXEL GAME - EARLY DEV", NULL, NULL);
+    // Set the version to GLFW 4.1
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 4);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 1);
+
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE); // ESSENTIAL FOR MAC
+
+    // Initalize the window
+    GLFWwindow* window = glfwCreateWindow(width, height, title, NULL, NULL);
     if (window == NULL) {
         std::cout << "FAILED TO CREATE WINDOW" <<  std::endl;
         glfwTerminate;
-        return -1;
+        return;
     }
-    glfwMakeContextCurrent(window);
+    glfwMakeContextCurrent(window); // make the current context the window we created for glfw meaning it is targetting this
 
+    // Checks if GLAD can be initializes
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
         std::cout << "Failed to initialize GLAD" << std::endl;
-        return -1;
+        return;
     }
 
-    glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
-
+    // Prevents permeability
     glEnable(GL_DEPTH);
 }
 
-void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
-    glViewport(0, 0, 800, 600);
+
+// terminates the window
+Window::~Window() {
+    glfwTerminate();
 }
 
-void processInput(GLFWwindow* window) {
-    if(glfwGetInputMode(window, GLFW_KEY_ESCAPE) == true) {
-        glfwSetWindowShouldClose(window, true);
-    }
+// function to close window
+bool Window::shouldClose() {
+    return glfwWindowShouldClose(window);
+}
+
+// swaps buffers every loop to join triangles
+void Window::swapBuffers() {
+    glfwSwapBuffers(window);
+}
+
+void Window::pollEvents() {
+    glfwPollEvents();
 }
