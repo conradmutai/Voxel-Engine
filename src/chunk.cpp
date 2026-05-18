@@ -10,8 +10,10 @@ Chunk::Chunk(int gridX, int gridZ) : gridX(gridX), gridZ(gridZ), isDirty(true), 
             for (int x = 0; x < CHUNK_WIDTH; ++x) {
                 if(y == 15) {
                     setBlock(x, y, z, GRASS);
-                } else {
+                } else if (y < 14 && y > 11) {
                     setBlock(x, y, z, DIRT);
+                }else {
+                    setBlock(x, y, z, STONE);
                 }
             }
         }

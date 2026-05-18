@@ -90,8 +90,6 @@ int main() {
 
         // renders in new chunk and textures
         dirtTexture.bind();
-        grassTexture.bind();
-        stoneTexture.bind();
 
         chunk.render();
 
