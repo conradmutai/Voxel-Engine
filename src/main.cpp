@@ -9,6 +9,7 @@
 #include "camera.h"
 #include "texture.h"
 #include "window.h"
+#include "chunk.h"
 
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -25,7 +26,7 @@ std::string getExecutableDir() {
 };
 
 // Global Camera and Time state
-Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
+Camera camera(glm::vec3(0.0f, 16.0f, 3.0f));
 float deltaTime = 0.0f; // Time between current frame and last frame
 float lastFrame = 0.0f; // Time of last frame
 
@@ -54,78 +55,13 @@ int main() {
 
     // 4. Loads textures
     Texture dirtTexture(base + "resources/dirt.png");
+    Texture grassTexture(base + "resources/grass.png");
+    Texture stoneTexture(base + "resources/stone.png");
 
-    // 5. Create cubes and indices
-    float vertices[] {
-        // vertex points      // texture coords
-        -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
-        0.5f, -0.5f, -0.5f,   1.0f, 0.0f,
-        0.5f,  0.5f, -0.5f,   1.0f, 1.0f,
-        0.5f,  0.5f, -0.5f,   1.0f, 1.0f,
-        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
-        -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
+    // 5. Initiates new chunk
+    Chunk chunk(0,0);
 
-        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-        0.5f, -0.5f,  0.5f,   1.0f, 0.0f,
-        0.5f,  0.5f,  0.5f,   1.0f, 1.0f,
-        0.5f,  0.5f,  0.5f,   1.0f, 1.0f,
-        -0.5f,  0.5f,  0.5f,  0.0f, 1.0f,
-        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-
-        -0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-        -0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-        -0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-
-        0.5f,  0.5f,  0.5f,   1.0f, 0.0f,
-        0.5f,  0.5f, -0.5f,   1.0f, 1.0f,
-        0.5f, -0.5f, -0.5f,   0.0f, 1.0f,
-        0.5f, -0.5f, -0.5f,   0.0f, 1.0f,
-        0.5f, -0.5f,  0.5f,   0.0f, 0.0f,
-        0.5f,  0.5f,  0.5f,   1.0f, 0.0f,
- 
-        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-        0.5f, -0.5f, -0.5f,   1.0f, 1.0f,
-        0.5f, -0.5f,  0.5f,   1.0f, 0.0f,
-        0.5f, -0.5f,  0.5f,   1.0f, 0.0f,
-        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-
-        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
-        0.5f,  0.5f, -0.5f,   1.0f, 1.0f,
-        0.5f,  0.5f,  0.5f,   1.0f, 0.0f,
-        0.5f,  0.5f,  0.5f,   1.0f, 0.0f,
-        -0.5f,  0.5f,  0.5f,  0.0f, 0.0f,
-        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f
-    };
-    unsigned int indices[] {
-        0, 1, 3,
-        1, 2, 3
-    };
-    
-    unsigned int VBO, VAO, EBO;
-
-    glGenVertexArrays(1, &VAO);
-    glBindVertexArray(VAO);
-
-    glGenBuffers(1, &VBO);
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-    glGenBuffers(1, &EBO);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
-
-    // 6. Pushing data to the GPU
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*) 0);
-    glEnableVertexAttribArray(0);
-
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*) (3 * sizeof(float)));
-    glEnableVertexAttribArray(1);
-
-    // 7. game loop
+    // 6. game loop
     while(!window.shouldClose()) {
         // Per-frame time logic
         float currentFrame = static_cast<float>(glfwGetTime());
@@ -152,10 +88,12 @@ int main() {
         glm::mat4 model = glm::mat4(1.0f); // Static cube at 0,0,0
         ourShader.setMat4("model", model);
 
-        // Bind Texture and Draw
+        // renders in new chunk and textures
         dirtTexture.bind();
-        glBindVertexArray(VAO);
-        glDrawArrays(GL_TRIANGLES, 0, 36);
+        grassTexture.bind();
+        stoneTexture.bind();
+
+        chunk.render();
 
         // Swap buffers & poll events
         window.swapBuffers();
