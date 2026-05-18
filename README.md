@@ -8,6 +8,7 @@ An open world voxel game, trying to recreate minecraft from scratch while aiding
 - GLSL
 
 ### Frameworks
+- OpenGL
 - GLM
 - GLFW
 - glad
