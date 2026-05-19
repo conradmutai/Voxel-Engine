@@ -4,6 +4,7 @@
 #include <libgen.h>
 #include <mach-o/dyld.h>
 
+#include "blockmanager.h"
 #include "shader.h"
 #include "stb_image.h"
 #include "camera.h"
@@ -58,10 +59,13 @@ int main() {
     Texture grassTexture(base + "resources/grass.png");
     Texture stoneTexture(base + "resources/stone.png");
 
-    // 5. Initiates new chunk
-    Chunk chunk(0,0);
+    // 5. Initiates the blockmanager object
+    BlockManager manager;
 
-    // 6. game loop
+    // 6. Initiates new chunk
+    Chunk chunk(0,0,&manager);
+
+    // 7. game loop
     while(!window.shouldClose()) {
         // Per-frame time logic
         float currentFrame = static_cast<float>(glfwGetTime());
