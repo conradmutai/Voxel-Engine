@@ -8,7 +8,9 @@ enum BlockType : uint8_t {
     AIR = 0,
     DIRT = 1,
     GRASS = 2,
-    STONE = 3
+    STONE = 3,
+    WATER = 4, 
+    GLASS = 5
 };
 
 enum faceDirection : int {
@@ -24,4 +26,7 @@ class BlockManager {
     public:
         BlockManager();
         std::vector<float> uvCalculator(int BlockID, enum faceDirection faceDir);
+
+        // a class that handles logic for transparent block
+        bool isTransparent(uint8_t blockID);
 };

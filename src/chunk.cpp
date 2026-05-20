@@ -89,7 +89,7 @@ void Chunk::generateMesh() {
 
     // binds the buffer and the meshvertices to the vertex buffer output
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, meshVertices.size() * sizeof(float), meshVertices.data(), GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, meshVertices.size() * sizeof(float), meshVertices.data(), GL_DYNAMIC_DRAW); // changed from GL_STATIC_DRAW to GL_DYNAMIC_DRAW to provide dynamic buffer updates and performance updates
 
     // maps the vertex attribute array for both the points of the vertex coords and the texture coords
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*) 0);
@@ -115,7 +115,7 @@ void Chunk::addBlockVertices(std::vector<float>& meshVertices, int localX, int l
     float startU, startV, endU, endV;
 
     // checks above the current block and creates a face with texture mapped
-    if (localY == CHUNK_HEIGHT - 1 || getBlock(localX, localY + 1, localZ)  == AIR) {
+    if (localY == CHUNK_HEIGHT - 1 || manager->isTransparent(getBlock(localX, localY + 1, localZ))) {
         uvs = manager->uvCalculator(blockID, FACE_TOP);
 
         startU = uvs[0];
@@ -136,7 +136,7 @@ void Chunk::addBlockVertices(std::vector<float>& meshVertices, int localX, int l
         meshVertices.insert(meshVertices.end(), face, face + 30);
     }
     // checks below the block and creates a face
-    if (localX == 0 || getBlock(localX, localY - 1, localZ)  == AIR) {
+    if (localX == 0 || manager->isTransparent(getBlock(localX, localY - 1, localZ))) {
         uvs = manager->uvCalculator(blockID, FACE_BOTTOM);
 
         startU = uvs[0];
@@ -156,7 +156,7 @@ void Chunk::addBlockVertices(std::vector<float>& meshVertices, int localX, int l
         meshVertices.insert(meshVertices.end(), face, face + 30);
     }
     // checks right of the block and creates a face and maps the textures
-    if (localX == CHUNK_WIDTH + 1 || getBlock(localX + 1, localY, localZ) == AIR) {
+    if (localX == CHUNK_WIDTH + 1 || manager->isTransparent(getBlock(localX + 1, localY, localZ))) {
         uvs = manager->uvCalculator(blockID, FACE_RIGHT);
 
         startU = uvs[0];
@@ -176,7 +176,7 @@ void Chunk::addBlockVertices(std::vector<float>& meshVertices, int localX, int l
         meshVertices.insert(meshVertices.end(), face, face + 30);
     }
     // checks left of the block and creates a face and maps the textures
-    if (localX == 0 || getBlock(localX - 1, localY, localZ)  == AIR) {
+    if (localX == 0 || manager->isTransparent(getBlock(localX - 1, localY, localZ))) {
         uvs = manager->uvCalculator(blockID, FACE_LEFT);
 
         startU = uvs[0];
@@ -196,7 +196,7 @@ void Chunk::addBlockVertices(std::vector<float>& meshVertices, int localX, int l
         meshVertices.insert(meshVertices.end(), face, face + 30);
     }
     // checks front of the block and creates a face and maps the textures
-    if (localZ == CHUNK_DEPTH - 1 || getBlock(localX, localY, localZ + 1)  == AIR) {
+    if (localZ == CHUNK_DEPTH - 1 || manager->isTransparent(getBlock(localX, localY, localZ + 1))) {
         uvs = manager->uvCalculator(blockID, FACE_FRONT);
 
         startU = uvs[0];
@@ -216,7 +216,7 @@ void Chunk::addBlockVertices(std::vector<float>& meshVertices, int localX, int l
         meshVertices.insert(meshVertices.end(), face, face + 30);
     }
     // checks back of the block and creates a face and maps the textures
-    if (localZ == 0 || getBlock(localX, localY, localZ - 1)  == AIR) {
+    if (localZ == 0 || manager->isTransparent(getBlock(localX, localY, localZ - 1))) {
         uvs = manager->uvCalculator(blockID, FACE_BACK);
 
         startU = uvs[0];

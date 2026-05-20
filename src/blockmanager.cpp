@@ -4,6 +4,14 @@ BlockManager::BlockManager() {
 
 }
 
+bool BlockManager::isTransparent(uint8_t blockID) {
+    if (blockID == GLASS || blockID == WATER || blockID == AIR) { 
+        return true;
+    }
+
+    return false;
+}
+
 // looks up the atlas coords and calculates the floating-point UV corners to return back tot hechunk
 std::vector<float> BlockManager::uvCalculator(int BlockID, enum faceDirection faceDir) {
     std::vector<float> UV;
