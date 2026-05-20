@@ -55,9 +55,7 @@ int main() {
     Shader ourShader((base + "shader.vs").c_str(), (base + "shader.fs").c_str());
 
     // 4. Loads textures
-    Texture dirtTexture(base + "resources/dirt.png");
-    Texture grassTexture(base + "resources/grass.png");
-    Texture stoneTexture(base + "resources/stone.png");
+    Texture texture(base + "resources/terrain.png");
 
     // 5. Initiates the blockmanager object
     BlockManager manager;
@@ -81,6 +79,10 @@ int main() {
 
         // Bind Shader
         ourShader.use();
+        ourShader.setInt("texture1", 0);
+        glActiveTexture(GL_TEXTURE0);
+        texture.bind(); // Your loaded atlas.png
+        chunk.render();
 
         // Pass matrices to shader
         glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), 800.0f / 600.0f, 0.1f, 100.0f);
@@ -91,9 +93,6 @@ int main() {
 
         glm::mat4 model = glm::mat4(1.0f); // Static cube at 0,0,0
         ourShader.setMat4("model", model);
-
-        // renders in new chunk and textures
-        dirtTexture.bind();
 
         chunk.render();
 

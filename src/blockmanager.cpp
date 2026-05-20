@@ -44,11 +44,11 @@ std::vector<float> BlockManager::uvCalculator(int BlockID, enum faceDirection fa
 
     float startU, startV, endU, endV;
 
-    startU = column / 16.0;
-    startV = row / 16.0;
+    startU = (float) column / 16.0;
+    startV = 1.0f - ((row + 1) / 16.0f);
 
     endU = startU + (1.0/16.0);
-    endV = startV + (1.0/16.0);
+    endV = 1.0f - (row / 16.0f);
 
     UV.push_back(startU);
     UV.push_back(startV);

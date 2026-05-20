@@ -101,23 +101,27 @@ void Chunk::generateMesh() {
     isDirty = false;
 }
 
-void Chunk::addBlockVertices(std::vector<float>& vertices, int localX, int localY, int localZ) {
-    // Convert local chunk coordinates to world coordinates
+void Chunk::addBlockVertices(std::vector<float>& meshVertices, int localX, int localY, int localZ) {
+    // 1. Gets block id and checks if its is air
+    uint8_t blockID = getBlock(localX, localY, localZ);
+    if (blockID == AIR) return;
+    
+    // 2. Convert local chunk coordinates to world coordinates
     float wX = (gridX * CHUNK_WIDTH) + localX;
     float wY = localY;
     float wZ = (gridZ * CHUNK_DEPTH) + localZ;
 
-    int currentBlockID = getBlock(localX, localY, localZ);
+    std::vector<float> uvs;
     float startU, startV, endU, endV;
 
     // checks above the current block and creates a face with texture mapped
-    if (getBlock(localX, localY + 1, localZ)  == AIR) {
-        std::vector<float> UV = manager->uvCalculator(currentBlockID, FACE_TOP);
+    if (localY == CHUNK_HEIGHT - 1 || getBlock(localX, localY + 1, localZ)  == AIR) {
+        uvs = manager->uvCalculator(blockID, FACE_TOP);
 
-        startU = UV[0];
-        startV = UV[1];
-        endU = UV[2];
-        endV = UV[3];
+        startU = uvs[0];
+        startV = uvs[1];
+        endU = uvs[2];
+        endV = uvs[3];
 
         float face[] = {
             // X, Y, Z                                // U, V
@@ -129,16 +133,16 @@ void Chunk::addBlockVertices(std::vector<float>& vertices, int localX, int local
             wX - 0.5f, wY + 0.5f, wZ + 0.5f,          startU, startV  // Bottom-Left
         };
 
-        vertices.insert(vertices.end(), std::begin(face), std::end(face));
+        meshVertices.insert(meshVertices.end(), face, face + 30);
     }
     // checks below the block and creates a face
-    if (getBlock(localX, localY - 1, localZ)  == AIR) {
-        std::vector<float> UV = manager->uvCalculator(currentBlockID, FACE_BOTTOM);
+    if (localX == 0 || getBlock(localX, localY - 1, localZ)  == AIR) {
+        uvs = manager->uvCalculator(blockID, FACE_BOTTOM);
 
-        startU = UV[0];
-        startV = UV[1];
-        endU = UV[2];
-        endV = UV[3];
+        startU = uvs[0];
+        startV = uvs[1];
+        endU = uvs[2];
+        endV = uvs[3];
 
         float face[] = {
             wX - 0.5f, wY - 0.5f, wZ - 0.5f,          startU, startV,
@@ -149,57 +153,56 @@ void Chunk::addBlockVertices(std::vector<float>& vertices, int localX, int local
             wX - 0.5f, wY - 0.5f, wZ - 0.5f,          startU, startV
         };
 
-        vertices.insert(vertices.end(), std::begin(face), std::end(face));
+        meshVertices.insert(meshVertices.end(), face, face + 30);
     }
     // checks right of the block and creates a face and maps the textures
-    if (getBlock(localX + 1, localY, localZ)  == AIR) {
-        std::vector<float> UV = manager->uvCalculator(currentBlockID, FACE_RIGHT);
+    if (localX == CHUNK_WIDTH + 1 || getBlock(localX + 1, localY, localZ) == AIR) {
+        uvs = manager->uvCalculator(blockID, FACE_RIGHT);
 
-        startU = UV[0];
-        startV = UV[1];
-        endU = UV[2];
-        endV = UV[3];
+        startU = uvs[0];
+        startV = uvs[1];
+        endU = uvs[2];
+        endV = uvs[3];
 
         float face[] = {
-            wX - 0.5f, wY - 0.5f, wZ - 0.5f,          startU, startV,
-            wX - 0.5f, wY - 0.5f, wZ + 0.5f,          endU,   startV,
-            wX - 0.5f, wY + 0.5f, wZ + 0.5f,          endU,   endV,
-            wX - 0.5f, wY + 0.5f, wZ + 0.5f,          endU,   endV,
-            wX - 0.5f, wY + 0.5f, wZ - 0.5f,          startU, endV,
-            wX - 0.5f, wY - 0.5f, wZ - 0.5f,          startU, startV
+            wX + 0.5f, wY - 0.5f, wZ - 0.5f,          startU, startV, // Bottom-Back
+            wX + 0.5f, wY - 0.5f, wZ + 0.5f,          endU,   startV, // Bottom-Front
+            wX + 0.5f, wY + 0.5f, wZ + 0.5f,          endU,   endV,   // Top-Front
+            wX + 0.5f, wY + 0.5f, wZ + 0.5f,          endU,   endV,   // Top-Front
+            wX + 0.5f, wY + 0.5f, wZ - 0.5f,          startU, endV,   // Top-Back
+            wX + 0.5f, wY - 0.5f, wZ - 0.5f,          startU, startV  // Bottom-Back
         };
 
-        vertices.insert(vertices.end(), std::begin(face), std::end(face));
+        meshVertices.insert(meshVertices.end(), face, face + 30);
     }
     // checks left of the block and creates a face and maps the textures
-    if (getBlock(localX - 1, localY, localZ)  == AIR) {
-        std::vector<float> UV = manager->uvCalculator(currentBlockID, FACE_LEFT);
+    if (localX == 0 || getBlock(localX - 1, localY, localZ)  == AIR) {
+        uvs = manager->uvCalculator(blockID, FACE_LEFT);
 
-        startU = UV[0];
-        startV = UV[1];
-        endU = UV[2];
-        endV = UV[3];
+        startU = uvs[0];
+        startV = uvs[1];
+        endU = uvs[2];
+        endV = uvs[3];
 
-        float face[] {
-            // vertex coord       // tex coords
-            -0.5f, -0.5f, 0.0f,   startU, startV,
-            -0.5f,  0.5f, 0.0f,   startU, endV, 
-             0.5f,  0.5f, 0.0f,   endU,   endV,
-             0.5f,  0.5f, 0.0f,   endU,   endV,
-             0.5f, -0.5f, 0.0f,   endU,   startV,
-            -0.5f, -0.5f, 0.0f,   startU, startV 
+        float face[] = {
+            wX - 0.5f, wY - 0.5f, wZ - 0.5f, startU, startV,
+            wX - 0.5f, wY - 0.5f, wZ + 0.5f, endU,   startV,
+            wX - 0.5f, wY + 0.5f, wZ + 0.5f, endU,   endV,
+            wX - 0.5f, wY + 0.5f, wZ + 0.5f, endU,   endV,
+            wX - 0.5f, wY + 0.5f, wZ - 0.5f, startU, endV,
+            wX - 0.5f, wY - 0.5f, wZ - 0.5f, startU, startV
         };
 
-        vertices.insert(vertices.end(), std::begin(face), std::end(face));
+        meshVertices.insert(meshVertices.end(), face, face + 30);
     }
     // checks front of the block and creates a face and maps the textures
-    if (getBlock(localX, localY, localZ + 1)  == AIR) {
-        std::vector<float> UV = manager->uvCalculator(currentBlockID, FACE_FRONT);
+    if (localZ == CHUNK_DEPTH - 1 || getBlock(localX, localY, localZ + 1)  == AIR) {
+        uvs = manager->uvCalculator(blockID, FACE_FRONT);
 
-        startU = UV[0];
-        startV = UV[1];
-        endU = UV[2];
-        endV = UV[3];
+        startU = uvs[0];
+        startV = uvs[1];
+        endU = uvs[2];
+        endV = uvs[3];
 
         float face[] = {
             wX - 0.5f, wY - 0.5f, wZ + 0.5f,          startU, startV,
@@ -210,16 +213,16 @@ void Chunk::addBlockVertices(std::vector<float>& vertices, int localX, int local
             wX - 0.5f, wY - 0.5f, wZ + 0.5f,          startU, startV
         };
 
-        vertices.insert(vertices.end(), std::begin(face), std::end(face));
+        meshVertices.insert(meshVertices.end(), face, face + 30);
     }
     // checks back of the block and creates a face and maps the textures
-    if (getBlock(localX, localY, localZ + 1)  == AIR) {
-        std::vector<float> UV = manager->uvCalculator(currentBlockID, FACE_BACK);
+    if (localZ == 0 || getBlock(localX, localY, localZ - 1)  == AIR) {
+        uvs = manager->uvCalculator(blockID, FACE_BACK);
 
-        startU = UV[0];
-        startV = UV[1];
-        endU = UV[2];
-        endV = UV[3];
+        startU = uvs[0];
+        startV = uvs[1];
+        endU = uvs[2];
+        endV = uvs[3];
 
         float face[] = {
             wX + 0.5f, wY - 0.5f, wZ - 0.5f,          startU, startV,
@@ -230,8 +233,6 @@ void Chunk::addBlockVertices(std::vector<float>& vertices, int localX, int local
             wX + 0.5f, wY - 0.5f, wZ - 0.5f,          startU, startV
         };
 
-        vertices.insert(vertices.end(), std::begin(face), std::end(face));
+        meshVertices.insert(meshVertices.end(), face, face + 30);
     }
-
-
 }
