@@ -34,4 +34,5 @@ class Chunk {
         int getIndex(int x, int y, int z) const;
         void generateMesh();
         void addBlockVertices(std::vector<float>& vertices, int localX, int localY, int localZ);
+        int generateAmbientOcclusion(int localX, int localY, int localZ, enum faceDirection faceDi, int vertexID);
     };
