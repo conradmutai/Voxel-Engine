@@ -1,5 +1,5 @@
 # VOXEL GAME ENGINE
-An open world voxel game, trying to recreate minecraft from scratch while aiding my process in learning graphic frameworks like OpenGL and expanding my knowledge on C++.
+An open-world voxel game, trying to recreate Minecraft from scratch while aiding my process in learning graphic frameworks like OpenGL and expanding my knowledge of C++. 
 
 ## Tech Stack
 ### Languages
@@ -13,4 +13,4 @@ An open world voxel game, trying to recreate minecraft from scratch while aiding
 - GLFW
 - glad
 - KHR
-
+- CMake
