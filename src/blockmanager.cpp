@@ -12,7 +12,7 @@ bool BlockManager::isTransparent(uint8_t blockID) {
     return false;
 }
 
-// looks up the atlas coords and calculates the floating-point UV corners to return back tot hechunk
+// looks up the atlas coords and calculates the floating-point UV corners to return back to the chunk
 std::vector<float> BlockManager::uvCalculator(int BlockID, enum faceDirection faceDir) {
     std::vector<float> UV;
 

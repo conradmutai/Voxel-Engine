@@ -10,7 +10,8 @@ enum BlockType : uint8_t {
     GRASS = 2,
     STONE = 3,
     WATER = 4, 
-    GLASS = 5
+    GLASS = 5,
+    BLOCK_OF_LIGHT = 6
 };
 
 enum faceDirection : int {

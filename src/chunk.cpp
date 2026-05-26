@@ -3,6 +3,7 @@
 Chunk::Chunk(int gridX, int gridZ, BlockManager* manager) : gridX(gridX), gridZ(gridZ), manager(manager), isDirty(true), vertexCount(0) {
     // 1. Heap Allocation for the 1D Array (Initialized to 0/AIR)
     blocks = new uint8_t[CHUNK_WIDTH * CHUNK_HEIGHT * CHUNK_DEPTH]();
+    lightMap = new uint8_t[CHUNK_WIDTH * CHUNK_HEIGHT * CHUNK_DEPTH]();
 
     // 2. Generate Basic Flat Terrain 
     for (int z = 0; z < CHUNK_DEPTH; ++z) {
@@ -25,6 +26,8 @@ Chunk::Chunk(int gridX, int gridZ, BlockManager* manager) : gridX(gridX), gridZ(
     }
     // -------------------------------------------------------------
 
+    sunlightLevel();
+
     // generates the buffer and vertex arrays
     glGenVertexArrays(1, &VAO);
     glGenBuffers(1, &VBO);
@@ -32,6 +35,7 @@ Chunk::Chunk(int gridX, int gridZ, BlockManager* manager) : gridX(gridX), gridZ(
 
 Chunk::~Chunk() {
     delete[] blocks;
+    delete[] lightMap;
     glDeleteVertexArrays(1, &VAO);
     glDeleteBuffers(1, &VBO);
 }
@@ -57,6 +61,51 @@ uint8_t Chunk::getBlock(int x, int y, int z) const {
     } 
 
     return AIR;
+}
+
+// sets the light level for the block
+void Chunk::setLight(int localX, int localY, int localZ, uint8_t level) {
+    int index = 0;
+    
+    if (localX < CHUNK_WIDTH && localY < CHUNK_HEIGHT && localZ < CHUNK_DEPTH) {
+        index = getIndex(localX, localY, localZ);
+        lightMap[index] = level;
+        isDirty = true;
+    }
+}
+
+// gets the light level from the lightMap for the block
+int Chunk::getLight(int localX, int localY, int localZ) {
+    int index = 0;
+
+    if(localX < CHUNK_WIDTH && localY < CHUNK_HEIGHT && localZ < CHUNK_DEPTH) {    
+        index = getIndex(localX, localY, localZ);
+        return lightMap[index];
+    }
+
+    return 0;
+}
+
+// sets the sunlight level for all the blocks at initialization
+void Chunk::sunlightLevel() {
+    bool isSkyLightBlocked = false;
+    int yCoord = CHUNK_HEIGHT - 1;
+
+    for (int xCoord = 0; xCoord < CHUNK_WIDTH; xCoord++) {
+        for (int zCoord = 0; zCoord < CHUNK_DEPTH; zCoord++) {
+            isSkyLightBlocked = false;
+            yCoord = CHUNK_HEIGHT - 1;
+
+            while(yCoord >= 0) {
+                if(getBlock(xCoord, yCoord, zCoord) != AIR && getBlock(xCoord, yCoord, zCoord) != GLASS) {
+                    isSkyLightBlocked = true;
+                }
+                if (!isSkyLightBlocked) 
+                    setLight(xCoord, yCoord, zCoord, 15);
+                yCoord--;
+            }
+        }
+    }
 }
 
 void Chunk::render() {
@@ -87,8 +136,8 @@ void Chunk::generateMesh() {
         }
     }
 
-    // dividides by 5 to get the actual count of the vertices
-    vertexCount = meshVertices.size() / 6;
+    // dividides by 6 to get the actual count of the vertices
+    vertexCount = meshVertices.size() / 7;
 
     // binds the vertex array output
     glBindVertexArray(VAO);
@@ -98,14 +147,17 @@ void Chunk::generateMesh() {
     glBufferData(GL_ARRAY_BUFFER, meshVertices.size() * sizeof(float), meshVertices.data(), GL_DYNAMIC_DRAW); // changed from GL_STATIC_DRAW to GL_DYNAMIC_DRAW to provide dynamic buffer updates and performance updates
 
     // maps the vertex attribute array for both the points of the vertex coords and the texture coords
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*) 0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 7 * sizeof(float), (void*) 0);
     glEnableVertexAttribArray(0);
 
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*) (3 * sizeof(float)));
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 7 * sizeof(float), (void*) (3 * sizeof(float)));
     glEnableVertexAttribArray(1);
 
-    glVertexAttribPointer(2, 1, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*) (5 * sizeof(float)));
+    glVertexAttribPointer(2, 1, GL_FLOAT, GL_FALSE, 7 * sizeof(float), (void*) (5 * sizeof(float)));
     glEnableVertexAttribArray(2);
+
+    glVertexAttribPointer(3, 1, GL_FLOAT, GL_FALSE, 7 * sizeof(float), (void*) (6 * sizeof(float)));
+    glEnableVertexAttribArray(3);
 
     isDirty = false;
 }
@@ -120,26 +172,45 @@ int Chunk::generateAmbientOcclusion(int localX, int localY, int localZ, enum fac
         int topFace = localY + 1;
         axisAY = topFace; axisBY = topFace; diagY = topFace;
 
-        if (vertexID == 0) { // Bottom-Left Corner (Near-Left)
-            // Axis A moves along -X, Axis B moves along +Z
+        if (vertexID == 0) { // Bottom-Left
             axisAX = localX - 1; axisBZ = localZ + 1;
-            // Diagonal is the intersection of both movements
             diagX  = localX - 1; diagZ  = localZ + 1;
         }
-        if (vertexID == 1) { // Bottom-Right Corner (Near-Right)
+        else if (vertexID == 1) { // Bottom-Right
             axisAX = localX + 1; axisBZ = localZ + 1;
-            diagX = localX + 1; diagZ = localZ + 1;
+            diagX  = localX + 1; diagZ  = localZ + 1;
         }
-        if (vertexID == 2) { // Top-Right Corner (Far-Right)
+        else if (vertexID == 2) { // Top-Right
             axisAX = localX + 1; axisBZ = localZ - 1;
-            diagX = localX + 1; diagZ = localZ - 1;
+            diagX  = localX + 1; diagZ  = localZ - 1;
         }
-        if (vertexID == 3) { // Top-Left Corner (Far-Left)
+        else if (vertexID == 3) { // Top-Left
             axisAX = localX - 1; axisBZ = localZ - 1;
-            diagX = localX - 1; diagZ = localZ - 1;
+            diagX  = localX - 1; diagZ  = localZ - 1;
         }
     } 
-    if (faceDir == FACE_FRONT) {
+    else if (faceDir == FACE_BOTTOM) {
+        int bottomFace = localY - 1; // Fixed: altered from localZ - 1
+        axisAY = bottomFace; axisBY = bottomFace; diagY = bottomFace;
+
+        if (vertexID == 0) { 
+            axisAX = localX - 1; axisBZ = localZ - 1;
+            diagX  = localX - 1; diagZ  = localZ - 1;
+        }
+        else if (vertexID == 1) { 
+            axisAX = localX + 1; axisBZ = localZ - 1;
+            diagX  = localX + 1; diagZ  = localZ - 1;
+        }
+        else if (vertexID == 2) { 
+            axisAX = localX + 1; axisBZ = localZ + 1;
+            diagX  = localX + 1; diagZ  = localZ + 1;
+        }
+        else if (vertexID == 3) { 
+            axisAX = localX - 1; axisBZ = localZ + 1;
+            diagX  = localX - 1; diagZ  = localZ + 1;
+        }
+    }
+    else if (faceDir == FACE_FRONT) {
         int frontFace = localZ + 1;
         axisAZ = frontFace; axisBZ = frontFace; diagZ = frontFace;
 
@@ -147,83 +218,20 @@ int Chunk::generateAmbientOcclusion(int localX, int localY, int localZ, enum fac
             axisAX = localX - 1; axisBY = localY - 1;
             diagX = localX - 1; diagY = localY - 1;
         } 
-        if (vertexID == 1) {
+        else if (vertexID == 1) {
             axisAX = localX + 1; axisBY = localY - 1;
             diagX = localX + 1; diagY = localY - 1;
         } 
-        if (vertexID == 2) {
+        else if (vertexID == 2) {
             axisAX = localX + 1; axisBY = localY + 1;
             diagX = localX + 1; diagY = localY + 1;
         }
-        if (vertexID == 3) {
+        else if (vertexID == 3) {
             axisAX = localX - 1; axisBY = localY + 1;
             diagX = localX - 1; diagY = localY + 1;
         }
     }
-    if (faceDir == FACE_RIGHT) {
-        int rightFace = localX + 1;
-        axisAX = rightFace; axisBX = rightFace; diagX = rightFace;
-
-        if (vertexID == 0) {
-            axisAZ = localZ - 1; axisBY = localY - 1;
-            diagZ = localZ - 1; diagY = localY - 1; 
-        }
-        if (vertexID == 1) {
-            axisAZ = localZ + 1; axisBY = localY - 1;
-            diagZ = localZ + 1; diagY = localY - 1;
-        }
-        if (vertexID == 2) {
-            axisAZ = localZ + 1; axisBY = localY + 1;
-            diagZ = localZ + 1; diagY = localY + 1;
-        }
-        if (vertexID == 3) {
-            axisAZ = localZ - 1; axisBY = localY + 1;
-            diagZ = localZ - 1; diagY = localY + 1;
-        }
-    }
-    if (faceDir == FACE_BOTTOM) {
-        int bottomFace = localZ - 1;
-        axisAY = bottomFace; axisBY = bottomFace; diagY = bottomFace;
-
-        if (vertexID == 0) {
-            axisAX = localX - 1; axisBZ = localZ - 1;
-            diagX = localX - 1; diagZ = localZ - 1;
-        }
-        if (vertexID == 1) {
-            axisAX = localX + 1; axisBZ = localZ - 1;
-            diagX = localX + 1; diagZ = localZ - 1;
-        }
-        if (vertexID == 2) {
-            axisAX = localX - 1; axisBZ = localZ - 1;
-            diagX = localX - 1; diagZ = localZ - 1;
-        }
-        if (vertexID == 3) {
-            axisAX = localX + 1; axisBZ = localZ + 1;
-            diagX = localX + 1; axisBZ = localZ + 1;
-        }
-    }
-    if (faceDir == FACE_LEFT) {
-        int leftFace = localX - 1;
-        axisAX = leftFace; axisBX = leftFace; diagX = leftFace;
-
-        if (vertexID == 0) {
-            axisAY = localY - 1; axisBZ = localZ - 1;
-            diagY = localY - 1; diagZ = localZ - 1;
-        }
-        if (vertexID == 1) {
-            axisAY = localY - 1; axisBZ = localZ + 1;
-            diagY = localY - 1; diagZ = localZ + 1;
-        }
-        if (vertexID == 2) {
-            axisAY = localY + 1; axisBZ = localZ + 1;
-            diagY = localY + 1; diagZ = localZ + 1;
-        }
-        if (vertexID == 3) {
-            axisAY = localY + 1; axisBZ = localZ - 1;
-            diagY = localY + 1; diagZ = localZ - 1;
-        }
-    }
-    if (faceDir == FACE_BACK) {
+    else if (faceDir == FACE_BACK) {
         int backFace = localZ - 1;
         axisAZ = backFace; axisBZ = backFace; diagZ = backFace;
 
@@ -231,17 +239,59 @@ int Chunk::generateAmbientOcclusion(int localX, int localY, int localZ, enum fac
             axisAX = localX + 1; axisBY = localY - 1;
             diagX = localX + 1; diagY = localY - 1;
         }
-        if (vertexID == 1) {
+        else if (vertexID == 1) {
             axisAX = localX - 1; axisBY = localY - 1;
             diagX = localX - 1; diagY = localY - 1;
         }
-        if (vertexID == 2) {
+        else if (vertexID == 2) {
             axisAX = localX - 1; axisBY = localY + 1;
             diagX = localX - 1; diagY = localY + 1;
         }
-        if (vertexID == 3) {
+        else if (vertexID == 3) {
             axisAX = localX + 1; axisBY = localY + 1;
-            diagX = localX + 1; diagX = localX + 1;
+            diagX = localX + 1; diagY = localY + 1; // Fixed duplicate line copy-paste bug
+        }
+    }
+    else if (faceDir == FACE_RIGHT) {
+        int rightFace = localX + 1;
+        axisAX = rightFace; axisBX = rightFace; diagX = rightFace;
+
+        if (vertexID == 0) {
+            axisAZ = localZ - 1; axisBY = localY - 1;
+            diagZ = localZ - 1;  diagY = localY - 1; 
+        }
+        else if (vertexID == 1) {
+            axisAZ = localZ + 1; axisBY = localY - 1;
+            diagZ = localZ + 1;  diagY = localY - 1;
+        }
+        else if (vertexID == 2) {
+            axisAZ = localZ + 1; axisBY = localY + 1;
+            diagZ = localZ + 1;  diagY = localY + 1;
+        }
+        else if (vertexID == 3) {
+            axisAZ = localZ - 1; axisBY = localY + 1;
+            diagZ = localZ - 1;  diagY = localY + 1;
+        }
+    }
+    else if (faceDir == FACE_LEFT) {
+        int leftFace = localX - 1;
+        axisAX = leftFace; axisBX = leftFace; diagX = leftFace;
+
+        if (vertexID == 0) {
+            axisAZ = localZ - 1; axisBY = localY - 1;
+            diagZ = localZ - 1;  diagY = localY - 1;
+        }
+        else if (vertexID == 1) {
+            axisAZ = localZ + 1; axisBY = localY - 1;
+            diagZ = localZ + 1;  diagY = localY - 1;
+        }
+        else if (vertexID == 2) {
+            axisAZ = localZ + 1; axisBY = localY + 1;
+            diagZ = localZ + 1;  diagY = localY + 1;
+        }
+        else if (vertexID == 3) {
+            axisAZ = localZ - 1; axisBY = localY + 1;
+            diagZ = localZ - 1;  diagY = localY + 1;
         }
     }
 
@@ -292,25 +342,44 @@ void Chunk::addBlockVertices(std::vector<float>& meshVertices, int localX, int l
         endU = uvs[2];
         endV = uvs[3];
 
+        // gets the light level of the block above
+        float lightVal = (float) getLight(localX, localY + 1, localZ); // gets the light level for the block above
+
         int ao0 = generateAmbientOcclusion(localX, localY, localZ, FACE_TOP, 0); // Bottom-Left Corner
         int ao1 = generateAmbientOcclusion(localX, localY, localZ, FACE_TOP, 1); // Bottom-Right Corner
         int ao2 = generateAmbientOcclusion(localX, localY, localZ, FACE_TOP, 2); // Top-Right Corner
         int ao3 = generateAmbientOcclusion(localX, localY, localZ, FACE_TOP, 3); // Top-Left Corner
 
-        float face[] = {
-            // X, Y, Z                                // U,   V,      AO
-            wX - 0.5f, wY + 0.5f, wZ + 0.5f,          startU, startV, (float) ao0, // Bottom-Left
-            wX + 0.5f, wY + 0.5f, wZ + 0.5f,          endU,   startV, (float) ao1, // Bottom-Right
-            wX + 0.5f, wY + 0.5f, wZ - 0.5f,          endU,   endV,   (float) ao2, // Top-Right
-            wX + 0.5f, wY + 0.5f, wZ - 0.5f,          endU,   endV,   (float) ao2, // Top-Right
-            wX - 0.5f, wY + 0.5f, wZ - 0.5f,          startU, endV,   (float) ao3, // Top-Left
-            wX - 0.5f, wY + 0.5f, wZ + 0.5f,          startU, startV, (float) ao0 // Bottom-Left
-        };
+        // compares the two diagonals and if ao0 + ao2 is less than ao1 + ao3 then the quad is split down the diagonal
+        if (ao0 + ao2 < ao1 + ao3) {
+            // reordered the faces to perform Anistropy
+            float face[] = {
+                // X, Y, Z                                // U,   V,      AO,          light
+                wX + 0.5f, wY + 0.5f, wZ + 0.5f,          endU,   startV, (float) ao1, lightVal,  // Bottom-Right
+                wX + 0.5f, wY + 0.5f, wZ - 0.5f,          endU,   endV,   (float) ao2, lightVal,  // Top-Right
+                wX - 0.5f, wY + 0.5f, wZ - 0.5f,          startU, endV,   (float) ao3, lightVal,  // Top-Left
+                wX - 0.5f, wY + 0.5f, wZ - 0.5f,          startU, endV,   (float) ao3, lightVal,  // Top-Left
+                wX - 0.5f, wY + 0.5f, wZ + 0.5f,          startU, startV, (float) ao0, lightVal,  // Bottom-Left
+                wX + 0.5f, wY + 0.5f, wZ + 0.5f,          endU,   startV, (float) ao1, lightVal,  // Bottom-Right
+            };
 
-        meshVertices.insert(meshVertices.end(), std::begin(face), std::end(face));
+            meshVertices.insert(meshVertices.end(), std::begin(face), std::end(face));
+        } else {
+            float face[] = {
+                // X, Y, Z                                // U,   V,      AO,          light
+                wX - 0.5f, wY + 0.5f, wZ + 0.5f,          startU, startV, (float) ao0, lightVal, // Bottom-Left
+                wX + 0.5f, wY + 0.5f, wZ + 0.5f,          endU,   startV, (float) ao1, lightVal, // Bottom-Right
+                wX + 0.5f, wY + 0.5f, wZ - 0.5f,          endU,   endV,   (float) ao2, lightVal, // Top-Right
+                wX + 0.5f, wY + 0.5f, wZ - 0.5f,          endU,   endV,   (float) ao2, lightVal, // Top-Right
+                wX - 0.5f, wY + 0.5f, wZ - 0.5f,          startU, endV,   (float) ao3, lightVal, // Top-Left
+                wX - 0.5f, wY + 0.5f, wZ + 0.5f,          startU, startV, (float) ao0, lightVal // Bottom-Left
+            };
+
+            meshVertices.insert(meshVertices.end(), std::begin(face), std::end(face));
+        }
     }
     // checks below the block and creates a face
-    if (localX == 0 || manager->isTransparent(getBlock(localX, localY - 1, localZ))) {
+    if (localY == 0 || manager->isTransparent(getBlock(localX, localY - 1, localZ))) {
         uvs = manager->uvCalculator(blockID, FACE_BOTTOM);
 
         startU = uvs[0];
@@ -318,24 +387,42 @@ void Chunk::addBlockVertices(std::vector<float>& meshVertices, int localX, int l
         endU = uvs[2];
         endV = uvs[3];
 
+        // gets the light level of the block below for generation
+        float lightVal = (float) getLight(localX, localY - 1, localZ);
+
         int ao0 = generateAmbientOcclusion(localX, localY, localZ, FACE_BOTTOM, 0); // Bottom-Left Corner
         int ao1 = generateAmbientOcclusion(localX, localY, localZ, FACE_BOTTOM, 1); // Bottom-Right Corner
         int ao2 = generateAmbientOcclusion(localX, localY, localZ, FACE_BOTTOM, 2); // Top-Right Corner
         int ao3 = generateAmbientOcclusion(localX, localY, localZ, FACE_BOTTOM, 3); // Top-Left Corner
 
+        // helper variables that will help with the anisotropy
+        int finalAO1, finalAO2, finalAO3, finalAO0;
+
+        if (ao0 + ao2 < ao1 + ao3) {
+            finalAO0 = ao1;
+            finalAO1 = ao2;
+            finalAO2 = ao3;
+            finalAO3 = ao0;
+        } else {
+            finalAO0 = ao0;
+            finalAO1 = ao1;
+            finalAO2 = ao2;
+            finalAO3 = ao3;
+        };
+
         float face[] = {
-            wX - 0.5f, wY - 0.5f, wZ - 0.5f,          startU, startV, (float) ao0,
-            wX + 0.5f, wY - 0.5f, wZ - 0.5f,          endU,   startV, (float) ao1,
-            wX + 0.5f, wY - 0.5f, wZ + 0.5f,          endU,   endV,   (float) ao2,
-            wX + 0.5f, wY - 0.5f, wZ + 0.5f,          endU,   endV,   (float) ao2,
-            wX - 0.5f, wY - 0.5f, wZ + 0.5f,          startU, endV,   (float) ao3,
-            wX - 0.5f, wY - 0.5f, wZ - 0.5f,          startU, startV, (float) ao0
+            wX - 0.5f, wY - 0.5f, wZ - 0.5f,          startU, startV, (float) finalAO0, lightVal,
+            wX + 0.5f, wY - 0.5f, wZ - 0.5f,          endU,   startV, (float) finalAO1, lightVal,
+            wX + 0.5f, wY - 0.5f, wZ + 0.5f,          endU,   endV,   (float) finalAO2, lightVal,
+            wX + 0.5f, wY - 0.5f, wZ + 0.5f,          endU,   endV,   (float) finalAO2, lightVal,
+            wX - 0.5f, wY - 0.5f, wZ + 0.5f,          startU, endV,   (float) finalAO3, lightVal,
+            wX - 0.5f, wY - 0.5f, wZ - 0.5f,          startU, startV, (float) finalAO0, lightVal
         };
 
         meshVertices.insert(meshVertices.end(), std::begin(face), std::end(face));
     }
     // checks right of the block and creates a face and maps the textures
-    if (localX == CHUNK_WIDTH + 1 || manager->isTransparent(getBlock(localX + 1, localY, localZ))) {
+    if (localX == CHUNK_WIDTH - 1 || manager->isTransparent(getBlock(localX + 1, localY, localZ))) {
         uvs = manager->uvCalculator(blockID, FACE_RIGHT);
 
         int ao0 = generateAmbientOcclusion(localX, localY, localZ, FACE_RIGHT, 0); // Bottom-Left Corner
@@ -348,13 +435,32 @@ void Chunk::addBlockVertices(std::vector<float>& meshVertices, int localX, int l
         endU = uvs[2];
         endV = uvs[3];
 
+        // gets the light level of the block to the right of the block
+        float lightVal = (float) getLight(localX + 1, localY, localZ);
+
+         // helper variables that will help with the anisotropy
+        int finalAO1, finalAO2, finalAO3, finalAO0;
+
+        
+        if (ao0 + ao2 < ao1 + ao3) {
+            finalAO0 = ao1;
+            finalAO1 = ao2;
+            finalAO2 = ao3;
+            finalAO3 = ao0;
+        } else {
+            finalAO0 = ao0;
+            finalAO1 = ao1;
+            finalAO2 = ao2;
+            finalAO3 = ao3;
+        };
+
         float face[] = {
-            wX + 0.5f, wY - 0.5f, wZ - 0.5f,          startU, startV,  (float) ao0, // Bottom-Back
-            wX + 0.5f, wY - 0.5f, wZ + 0.5f,          endU,   startV,  (float) ao1, // Bottom-Front
-            wX + 0.5f, wY + 0.5f, wZ + 0.5f,          endU,   endV,    (float) ao2, // Top-Front
-            wX + 0.5f, wY + 0.5f, wZ + 0.5f,          endU,   endV,    (float) ao2, // Top-Front
-            wX + 0.5f, wY + 0.5f, wZ - 0.5f,          startU, endV,    (float) ao3, // Top-Back
-            wX + 0.5f, wY - 0.5f, wZ - 0.5f,          startU, startV,  (float) ao0 // Bottom-Back
+            wX + 0.5f, wY - 0.5f, wZ - 0.5f,          startU, startV,  (float) finalAO0, lightVal, // Bottom-Back
+            wX + 0.5f, wY - 0.5f, wZ + 0.5f,          endU,   startV,  (float) finalAO1, lightVal, // Bottom-Front
+            wX + 0.5f, wY + 0.5f, wZ + 0.5f,          endU,   endV,    (float) finalAO2, lightVal, // Top-Front
+            wX + 0.5f, wY + 0.5f, wZ + 0.5f,          endU,   endV,    (float) finalAO2, lightVal, // Top-Front
+            wX + 0.5f, wY + 0.5f, wZ - 0.5f,          startU, endV,    (float) finalAO3, lightVal, // Top-Back
+            wX + 0.5f, wY - 0.5f, wZ - 0.5f,          startU, startV,  (float) finalAO0, lightVal // Bottom-Back
         };
 
         meshVertices.insert(meshVertices.end(), std::begin(face), std::end(face));
@@ -373,17 +479,35 @@ void Chunk::addBlockVertices(std::vector<float>& meshVertices, int localX, int l
         int ao2 = generateAmbientOcclusion(localX, localY, localZ, FACE_LEFT, 2); // Top-Right Corner
         int ao3 = generateAmbientOcclusion(localX, localY, localZ, FACE_LEFT, 3); // Top-Left Corner
 
+        // gets the light level of the block to the left 
+        float lightVal = (float) getLight(localX - 1, localY, localZ);
+
+        // helper variables that will help with the anisotropy
+        int finalAO1, finalAO2, finalAO3, finalAO0;
+
+        if (ao0 + ao2 < ao1 + ao3) {
+            finalAO0 = ao3;
+            finalAO1 = ao0;
+            finalAO2 = ao1;
+            finalAO3 = ao2;
+        } else {
+            finalAO0 = ao0;
+            finalAO1 = ao1;
+            finalAO2 = ao2;
+            finalAO3 = ao3;
+        };
+
         float face[] = {
-            wX - 0.5f, wY - 0.5f, wZ - 0.5f, startU, startV, (float) ao0,
-            wX - 0.5f, wY - 0.5f, wZ + 0.5f, endU,   startV, (float) ao1,
-            wX - 0.5f, wY + 0.5f, wZ + 0.5f, endU,   endV,   (float) ao2,
-            wX - 0.5f, wY + 0.5f, wZ + 0.5f, endU,   endV,   (float) ao2,
-            wX - 0.5f, wY + 0.5f, wZ - 0.5f, startU, endV,   (float) ao3,
-            wX - 0.5f, wY - 0.5f, wZ - 0.5f, startU, startV, (float) ao0
+            wX - 0.5f, wY - 0.5f, wZ - 0.5f, startU, startV, (float) finalAO0, lightVal,
+            wX - 0.5f, wY - 0.5f, wZ + 0.5f, endU,   startV, (float) finalAO1, lightVal,
+            wX - 0.5f, wY + 0.5f, wZ + 0.5f, endU,   endV,   (float) finalAO2, lightVal,
+            wX - 0.5f, wY + 0.5f, wZ + 0.5f, endU,   endV,   (float) finalAO2, lightVal,
+            wX - 0.5f, wY + 0.5f, wZ - 0.5f, startU, endV,   (float) finalAO3, lightVal,
+            wX - 0.5f, wY - 0.5f, wZ - 0.5f, startU, startV, (float) finalAO0, lightVal
         };
 
         meshVertices.insert(meshVertices.end(), std::begin(face), std::end(face));
-    }
+    }  
     // checks front of the block and creates a face and maps the textures
     if (localZ == CHUNK_DEPTH - 1 || manager->isTransparent(getBlock(localX, localY, localZ + 1))) {
         uvs = manager->uvCalculator(blockID, FACE_FRONT);
@@ -393,18 +517,36 @@ void Chunk::addBlockVertices(std::vector<float>& meshVertices, int localX, int l
         int ao2 = generateAmbientOcclusion(localX, localY, localZ, FACE_FRONT, 2); // Top-Right Corner
         int ao3 = generateAmbientOcclusion(localX, localY, localZ, FACE_FRONT, 3); // Top-Left Corner
 
+        // gets the light level fo the block in fornt
+        float lightVal = (float) getLight(localX, localY, localZ + 1);
+
         startU = uvs[0];
         startV = uvs[1];
         endU = uvs[2];
         endV = uvs[3];
+        
+        // helper variables that will help with the anisotropy
+        int finalAO1, finalAO2, finalAO3, finalAO0;
+
+        if (ao0 + ao2 < ao1 + ao3) {
+            finalAO0 = ao3;
+            finalAO1 = ao0;
+            finalAO2 = ao1;
+            finalAO3 = ao2;
+        } else {
+            finalAO0 = ao0;
+            finalAO1 = ao1;
+            finalAO2 = ao2;
+            finalAO3 = ao3;
+        };
 
         float face[] = {
-            wX - 0.5f, wY - 0.5f, wZ + 0.5f,          startU, startV, (float) ao0,
-            wX + 0.5f, wY - 0.5f, wZ + 0.5f,          endU,   startV, (float) ao1,
-            wX + 0.5f, wY + 0.5f, wZ + 0.5f,          endU,   endV,   (float) ao2,
-            wX + 0.5f, wY + 0.5f, wZ + 0.5f,          endU,   endV,   (float) ao2,
-            wX - 0.5f, wY + 0.5f, wZ + 0.5f,          startU, endV,   (float) ao3,
-            wX - 0.5f, wY - 0.5f, wZ + 0.5f,          startU, startV, (float) ao0
+            wX - 0.5f, wY - 0.5f, wZ + 0.5f,          startU, startV, (float) finalAO0, lightVal,
+            wX + 0.5f, wY - 0.5f, wZ + 0.5f,          endU,   startV, (float) finalAO1, lightVal,
+            wX + 0.5f, wY + 0.5f, wZ + 0.5f,          endU,   endV,   (float) finalAO2, lightVal,
+            wX + 0.5f, wY + 0.5f, wZ + 0.5f,          endU,   endV,   (float) finalAO2, lightVal,
+            wX - 0.5f, wY + 0.5f, wZ + 0.5f,          startU, endV,   (float) finalAO3, lightVal,
+            wX - 0.5f, wY - 0.5f, wZ + 0.5f,          startU, startV, (float) finalAO0, lightVal
         };
 
         meshVertices.insert(meshVertices.end(), std::begin(face), std::end(face));
@@ -418,18 +560,36 @@ void Chunk::addBlockVertices(std::vector<float>& meshVertices, int localX, int l
         int ao2 = generateAmbientOcclusion(localX, localY, localZ, FACE_BACK, 2); // Top-Right Corner
         int ao3 = generateAmbientOcclusion(localX, localY, localZ, FACE_BACK, 3); // Top-Left Corner
 
+        // gets the light level of the blcok in the back
+        float lightVal = (float) getLight(localX, localY, localZ - 1);
+
         startU = uvs[0];
         startV = uvs[1];
         endU = uvs[2];
         endV = uvs[3];
 
+        // helper variables that will help with the anisotropy
+        int finalAO1, finalAO2, finalAO3, finalAO0;
+
+        if (ao0 + ao2 < ao1 + ao3) {
+            finalAO0 = ao1;
+            finalAO1 = ao2;
+            finalAO2 = ao3;
+            finalAO3 = ao0;
+        } else {
+            finalAO0 = ao0;
+            finalAO1 = ao1;
+            finalAO2 = ao2;
+            finalAO3 = ao3;
+        };
+
         float face[] = {
-            wX + 0.5f, wY - 0.5f, wZ - 0.5f,          startU, startV, (float) ao0,
-            wX - 0.5f, wY - 0.5f, wZ - 0.5f,          endU,   startV, (float) ao1,
-            wX - 0.5f, wY + 0.5f, wZ - 0.5f,          endU,   endV,   (float) ao2,
-            wX - 0.5f, wY + 0.5f, wZ - 0.5f,          endU,   endV,   (float) ao2,
-            wX + 0.5f, wY + 0.5f, wZ - 0.5f,          startU, endV,   (float) ao3,
-            wX + 0.5f, wY - 0.5f, wZ - 0.5f,          startU, startV, (float) ao0
+            wX + 0.5f, wY - 0.5f, wZ - 0.5f,          startU, startV, (float) finalAO0, lightVal,
+            wX - 0.5f, wY - 0.5f, wZ - 0.5f,          endU,   startV, (float) finalAO1, lightVal,
+            wX - 0.5f, wY + 0.5f, wZ - 0.5f,          endU,   endV,   (float) finalAO2, lightVal,
+            wX - 0.5f, wY + 0.5f, wZ - 0.5f,          endU,   endV,   (float) finalAO2, lightVal,
+            wX + 0.5f, wY + 0.5f, wZ - 0.5f,          startU, endV,   (float) finalAO3, lightVal,
+            wX + 0.5f, wY - 0.5f, wZ - 0.5f,          startU, startV, (float) finalAO0, lightVal
         };
 
         meshVertices.insert(meshVertices.end(), std::begin(face), std::end(face));

@@ -3,6 +3,7 @@ out vec4 FragColor;
 
 in vec2 TexCoord;
 in float vAO;
+in float vLight;
 
 uniform sampler2D texture1;
 
@@ -16,6 +17,10 @@ void main() {
     // Level 0 -> 0.4 (Deep Corner Crack Shadow)
     float aoMultiplier = 0.4 + (vAO / 3.0) * 0.6;
 
+    // creates a light multiplier ranging transforming a range from 0.0 -> 15.0 to a range of 0.0 -> 15.0
+    // 0.05 represents the minimum world light, and is not 0 to prevent complete darkness
+    float lightMultiplier = 0.05 + (vLight / 15.0) * (1.0 - 0.05);
+
     // 1. Map the UV coordinates back to the 16x16 atlas grid space
     int col = int(TexCoord.s * 16.0);
     int row = int((1.0 - TexCoord.t) * 16.0);
@@ -25,9 +30,9 @@ void main() {
 
     if (isGrassTop) {
         // Multiply texture color by your custom grass green tint AND the ambient occlusion shadow
-        FragColor = texColor * vec4(0.45, 0.85, 0.35, 1.0) * aoMultiplier;
+        FragColor = texColor * vec4(0.45, 0.85, 0.35, 1.0) * aoMultiplier * lightMultiplier;
     } else {
         // Leave all other textures untinted, but apply the ambient occlusion shadow
-        FragColor = vec4(texColor.rgb * aoMultiplier, texColor.a);
+        FragColor = vec4(texColor.rgb * aoMultiplier * lightMultiplier, texColor.a);
     }
 }
