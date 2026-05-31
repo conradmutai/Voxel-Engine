@@ -1,5 +1,8 @@
 #include "chunk.h"
 
+static uint8_t sunlightLookup[16] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
+static uint8_t artificialLightLookup[16] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
+
 Chunk::Chunk(int gridX, int gridZ, BlockManager* manager) : gridX(gridX), gridZ(gridZ), manager(manager), isDirty(true), vertexCount(0) {
     // 1. Heap Allocation for the 1D Array (Initialized to 0/AIR)
     blocks = new uint8_t[CHUNK_WIDTH * CHUNK_HEIGHT * CHUNK_DEPTH]();
@@ -498,12 +501,12 @@ void Chunk::addBlockVertices(std::vector<float>& meshVertices, int localX, int l
         };
 
         float face[] = {
-            wX - 0.5f, wY - 0.5f, wZ - 0.5f, startU, startV, (float) finalAO0, lightVal,
-            wX - 0.5f, wY - 0.5f, wZ + 0.5f, endU,   startV, (float) finalAO1, lightVal,
-            wX - 0.5f, wY + 0.5f, wZ + 0.5f, endU,   endV,   (float) finalAO2, lightVal,
-            wX - 0.5f, wY + 0.5f, wZ + 0.5f, endU,   endV,   (float) finalAO2, lightVal,
-            wX - 0.5f, wY + 0.5f, wZ - 0.5f, startU, endV,   (float) finalAO3, lightVal,
-            wX - 0.5f, wY - 0.5f, wZ - 0.5f, startU, startV, (float) finalAO0, lightVal
+            wX - 0.5f, wY - 0.5f, wZ - 0.5f, startU, startV, (float) finalAO0, lightVal, 
+            wX - 0.5f, wY - 0.5f, wZ + 0.5f, endU,   startV, (float) finalAO1, lightVal, 
+            wX - 0.5f, wY + 0.5f, wZ + 0.5f, endU,   endV,   (float) finalAO2, lightVal, 
+            wX - 0.5f, wY + 0.5f, wZ + 0.5f, endU,   endV,   (float) finalAO2, lightVal, 
+            wX - 0.5f, wY + 0.5f, wZ - 0.5f, startU, endV,   (float) finalAO3, lightVal, 
+            wX - 0.5f, wY - 0.5f, wZ - 0.5f, startU, startV, (float) finalAO0, lightVal 
         };
 
         meshVertices.insert(meshVertices.end(), std::begin(face), std::end(face));
