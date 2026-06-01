@@ -27,7 +27,7 @@ std::string getExecutableDir() {
 };
 
 // Global Camera and Time state
-Camera camera(glm::vec3(0.0f, 16.0f, 3.0f));
+Camera camera(glm::vec3(0.0f, 70.0f, 3.0f));
 float deltaTime = 0.0f; // Time between current frame and last frame
 float lastFrame = 0.0f; // Time of last frame
 

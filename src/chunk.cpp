@@ -1,4 +1,5 @@
 #include "chunk.h"
+#include <glm/gtc/noise.hpp>
 
 static uint8_t sunlightLookup[16] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
 static uint8_t artificialLightLookup[16] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
@@ -8,16 +9,59 @@ Chunk::Chunk(int gridX, int gridZ, BlockManager* manager) : gridX(gridX), gridZ(
     blocks = new uint8_t[CHUNK_WIDTH * CHUNK_HEIGHT * CHUNK_DEPTH]();
     lightMap = new uint8_t[CHUNK_WIDTH * CHUNK_HEIGHT * CHUNK_DEPTH]();
 
-    // 2. Generate Basic Flat Terrain 
+    // // 2. Generate Basic Flat Terrain 
+    // for (int z = 0; z < CHUNK_DEPTH; ++z) {
+    //     for (int y = 0; y < 16; ++y) {
+    //         for (int x = 0; x < CHUNK_WIDTH; ++x) {
+    //             if(y == 15) {
+    //                 setBlock(x, y, z, GRASS);
+    //             } else if (y < 15 && y > 11) {
+    //                 setBlock(x, y, z, DIRT);
+    //             }else {
+    //                 setBlock(x, y, z, STONE);
+    //             }
+    //         }
+    //     }
+    // }
+
+    // declaring variables which hold the global address value (wX is worldX, wZ is worldZ)
+    int wX, wY, wZ;
+    float scaleX, scaleZ;
+    float noiseVal, terrainHeight, baseHeight = 64.0f, heightScale = 32.0f;
+
+
+    // 2. Generate Terrain (NEW MODEL FOR PHASE 5)
     for (int z = 0; z < CHUNK_DEPTH; ++z) {
-        for (int y = 0; y < 16; ++y) {
-            for (int x = 0; x < CHUNK_WIDTH; ++x) {
-                if(y == 15) {
-                    setBlock(x, y, z, GRASS);
-                } else if (y < 15 && y > 11) {
-                    setBlock(x, y, z, DIRT);
-                }else {
-                    setBlock(x, y, z, STONE);
+        for (int x = 0; x < CHUNK_WIDTH; ++x) {
+            // Calculates the global coordinates
+            wX = (gridX * CHUNK_WIDTH) + x;
+            wZ = (gridZ * CHUNK_DEPTH) + z;
+
+            // Scales coordinates for the noise frequency
+            scaleX = wX * 0.02f;
+            scaleZ = wZ * 0.02f;
+
+            // Generates the noise value from glm::noise in range (-1.0 to 1.0) 
+            noiseVal = glm::perlin(glm::vec2(scaleX, scaleZ));
+
+            // Generates the value for the terrain height at each coord
+            terrainHeight = baseHeight + (noiseVal * heightScale);
+
+            for (int y = 0; y < CHUNK_HEIGHT; y++) {
+                wY = y;
+
+                if (y < (int) terrainHeight) {
+                    if (y == (int) terrainHeight - 1) { 
+                        setBlock(x, y, z, GRASS);
+                    } else {
+                        if (y > (int) terrainHeight - 5) {
+                            setBlock(x, y, z, DIRT);
+                        } else {
+                            setBlock(x, y, z, STONE); 
+                        }
+                    }
+                } else {
+                    setBlock (x, y, z, AIR);
                 }
             }
         }
