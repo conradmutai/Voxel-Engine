@@ -141,10 +141,9 @@ void Chunk::setBlock(int x, int y, int z, uint8_t id) {
 }
 
 uint8_t Chunk::getBlock(int x, int y, int z) const {
-    // checks to see if the block coords fall into a valid range for the chunk dimensions
-    if (x < CHUNK_WIDTH && y < CHUNK_HEIGHT && z < CHUNK_DEPTH) {
+    if (x >= 0 && x < CHUNK_WIDTH && y >= 0 && y < CHUNK_HEIGHT && z >= 0 && z < CHUNK_DEPTH) {
         return blocks[getIndex(x,y,z)];
-    } 
+    }
 
     return AIR;
 }
@@ -162,14 +161,11 @@ void Chunk::setLight(int localX, int localY, int localZ, uint8_t level) {
 
 // gets the light level from the lightMap for the block
 int Chunk::getLight(int localX, int localY, int localZ) {
-    int index = 0;
-
-    if(localX < CHUNK_WIDTH && localY < CHUNK_HEIGHT && localZ < CHUNK_DEPTH) {    
-        index = getIndex(localX, localY, localZ);
-        return lightMap[index];
+    if (localX >= 0 && localX < CHUNK_WIDTH && localY >= 0 && localY < CHUNK_HEIGHT && localZ >= 0 && localZ < CHUNK_DEPTH) {
+        return lightMap[getIndex(localX, localY, localZ)];
     }
 
-    return 0;
+    return 15; // out-of-bounds = exposed to sky, assume full light
 }
 
 // sets the sunlight level for all the blocks at initialization
@@ -481,31 +477,27 @@ void Chunk::addBlockVertices(std::vector<float>& meshVertices, int localX, int l
         int ao2 = generateAmbientOcclusion(localX, localY, localZ, FACE_BOTTOM, 2); // Top-Right Corner
         int ao3 = generateAmbientOcclusion(localX, localY, localZ, FACE_BOTTOM, 3); // Top-Left Corner
 
-        // helper variables that will help with the anisotropy
-        int finalAO1, finalAO2, finalAO3, finalAO0;
-
         if (ao0 + ao2 < ao1 + ao3) {
-            finalAO0 = ao1;
-            finalAO1 = ao2;
-            finalAO2 = ao3;
-            finalAO3 = ao0;
+            float face[] = {
+                wX + 0.5f, wY - 0.5f, wZ - 0.5f,  endU,   startV, (float) ao1, lightVal,
+                wX + 0.5f, wY - 0.5f, wZ + 0.5f,  endU,   endV,   (float) ao2, lightVal,
+                wX - 0.5f, wY - 0.5f, wZ + 0.5f,  startU, endV,   (float) ao3, lightVal,
+                wX - 0.5f, wY - 0.5f, wZ + 0.5f,  startU, endV,   (float) ao3, lightVal,
+                wX - 0.5f, wY - 0.5f, wZ - 0.5f,  startU, startV, (float) ao0, lightVal,
+                wX + 0.5f, wY - 0.5f, wZ - 0.5f,  endU,   startV, (float) ao1, lightVal,
+            };
+            meshVertices.insert(meshVertices.end(), std::begin(face), std::end(face));
         } else {
-            finalAO0 = ao0;
-            finalAO1 = ao1;
-            finalAO2 = ao2;
-            finalAO3 = ao3;
-        };
-
-        float face[] = {
-            wX - 0.5f, wY - 0.5f, wZ - 0.5f,          startU, startV, (float) finalAO0, lightVal,
-            wX + 0.5f, wY - 0.5f, wZ - 0.5f,          endU,   startV, (float) finalAO1, lightVal,
-            wX + 0.5f, wY - 0.5f, wZ + 0.5f,          endU,   endV,   (float) finalAO2, lightVal,
-            wX + 0.5f, wY - 0.5f, wZ + 0.5f,          endU,   endV,   (float) finalAO2, lightVal,
-            wX - 0.5f, wY - 0.5f, wZ + 0.5f,          startU, endV,   (float) finalAO3, lightVal,
-            wX - 0.5f, wY - 0.5f, wZ - 0.5f,          startU, startV, (float) finalAO0, lightVal
-        };
-
-        meshVertices.insert(meshVertices.end(), std::begin(face), std::end(face));
+            float face[] = {
+                wX - 0.5f, wY - 0.5f, wZ - 0.5f,  startU, startV, (float) ao0, lightVal,
+                wX + 0.5f, wY - 0.5f, wZ - 0.5f,  endU,   startV, (float) ao1, lightVal,
+                wX + 0.5f, wY - 0.5f, wZ + 0.5f,  endU,   endV,   (float) ao2, lightVal,
+                wX + 0.5f, wY - 0.5f, wZ + 0.5f,  endU,   endV,   (float) ao2, lightVal,
+                wX - 0.5f, wY - 0.5f, wZ + 0.5f,  startU, endV,   (float) ao3, lightVal,
+                wX - 0.5f, wY - 0.5f, wZ - 0.5f,  startU, startV, (float) ao0, lightVal,
+            };
+            meshVertices.insert(meshVertices.end(), std::begin(face), std::end(face));
+        }
     }
     // checks right of the block and creates a face and maps the textures
     if (localX == CHUNK_WIDTH - 1 || manager->isTransparent(getBlock(localX + 1, localY, localZ))) {
@@ -524,32 +516,27 @@ void Chunk::addBlockVertices(std::vector<float>& meshVertices, int localX, int l
         // gets the light level of the block to the right of the block
         float lightVal = (float) getLight(localX + 1, localY, localZ);
 
-         // helper variables that will help with the anisotropy
-        int finalAO1, finalAO2, finalAO3, finalAO0;
-
-        
         if (ao0 + ao2 < ao1 + ao3) {
-            finalAO0 = ao1;
-            finalAO1 = ao2;
-            finalAO2 = ao3;
-            finalAO3 = ao0;
+            float face[] = {
+                wX + 0.5f, wY - 0.5f, wZ + 0.5f,  endU,   startV, (float) ao1, lightVal,
+                wX + 0.5f, wY + 0.5f, wZ + 0.5f,  endU,   endV,   (float) ao2, lightVal,
+                wX + 0.5f, wY + 0.5f, wZ - 0.5f,  startU, endV,   (float) ao3, lightVal,
+                wX + 0.5f, wY + 0.5f, wZ - 0.5f,  startU, endV,   (float) ao3, lightVal,
+                wX + 0.5f, wY - 0.5f, wZ - 0.5f,  startU, startV, (float) ao0, lightVal,
+                wX + 0.5f, wY - 0.5f, wZ + 0.5f,  endU,   startV, (float) ao1, lightVal,
+            };
+            meshVertices.insert(meshVertices.end(), std::begin(face), std::end(face));
         } else {
-            finalAO0 = ao0;
-            finalAO1 = ao1;
-            finalAO2 = ao2;
-            finalAO3 = ao3;
-        };
-
-        float face[] = {
-            wX + 0.5f, wY - 0.5f, wZ - 0.5f,          startU, startV,  (float) finalAO0, lightVal, // Bottom-Back
-            wX + 0.5f, wY - 0.5f, wZ + 0.5f,          endU,   startV,  (float) finalAO1, lightVal, // Bottom-Front
-            wX + 0.5f, wY + 0.5f, wZ + 0.5f,          endU,   endV,    (float) finalAO2, lightVal, // Top-Front
-            wX + 0.5f, wY + 0.5f, wZ + 0.5f,          endU,   endV,    (float) finalAO2, lightVal, // Top-Front
-            wX + 0.5f, wY + 0.5f, wZ - 0.5f,          startU, endV,    (float) finalAO3, lightVal, // Top-Back
-            wX + 0.5f, wY - 0.5f, wZ - 0.5f,          startU, startV,  (float) finalAO0, lightVal // Bottom-Back
-        };
-
-        meshVertices.insert(meshVertices.end(), std::begin(face), std::end(face));
+            float face[] = {
+                wX + 0.5f, wY - 0.5f, wZ - 0.5f,  startU, startV, (float) ao0, lightVal,
+                wX + 0.5f, wY - 0.5f, wZ + 0.5f,  endU,   startV, (float) ao1, lightVal,
+                wX + 0.5f, wY + 0.5f, wZ + 0.5f,  endU,   endV,   (float) ao2, lightVal,
+                wX + 0.5f, wY + 0.5f, wZ + 0.5f,  endU,   endV,   (float) ao2, lightVal,
+                wX + 0.5f, wY + 0.5f, wZ - 0.5f,  startU, endV,   (float) ao3, lightVal,
+                wX + 0.5f, wY - 0.5f, wZ - 0.5f,  startU, startV, (float) ao0, lightVal,
+            };
+            meshVertices.insert(meshVertices.end(), std::begin(face), std::end(face));
+        }
     }
     // checks left of the block and creates a face and maps the textures
     if (localX == 0 || manager->isTransparent(getBlock(localX - 1, localY, localZ))) {
@@ -568,32 +555,28 @@ void Chunk::addBlockVertices(std::vector<float>& meshVertices, int localX, int l
         // gets the light level of the block to the left 
         float lightVal = (float) getLight(localX - 1, localY, localZ);
 
-        // helper variables that will help with the anisotropy
-        int finalAO1, finalAO2, finalAO3, finalAO0;
-
         if (ao0 + ao2 < ao1 + ao3) {
-            finalAO0 = ao3;
-            finalAO1 = ao0;
-            finalAO2 = ao1;
-            finalAO3 = ao2;
+            float face[] = {
+                wX - 0.5f, wY - 0.5f, wZ + 0.5f,  endU,   startV, (float) ao1, lightVal,
+                wX - 0.5f, wY + 0.5f, wZ + 0.5f,  endU,   endV,   (float) ao2, lightVal,
+                wX - 0.5f, wY + 0.5f, wZ - 0.5f,  startU, endV,   (float) ao3, lightVal,
+                wX - 0.5f, wY + 0.5f, wZ - 0.5f,  startU, endV,   (float) ao3, lightVal,
+                wX - 0.5f, wY - 0.5f, wZ - 0.5f,  startU, startV, (float) ao0, lightVal,
+                wX - 0.5f, wY - 0.5f, wZ + 0.5f,  endU,   startV, (float) ao1, lightVal,
+            };
+            meshVertices.insert(meshVertices.end(), std::begin(face), std::end(face));
         } else {
-            finalAO0 = ao0;
-            finalAO1 = ao1;
-            finalAO2 = ao2;
-            finalAO3 = ao3;
-        };
-
-        float face[] = {
-            wX - 0.5f, wY - 0.5f, wZ - 0.5f, startU, startV, (float) finalAO0, lightVal, 
-            wX - 0.5f, wY - 0.5f, wZ + 0.5f, endU,   startV, (float) finalAO1, lightVal, 
-            wX - 0.5f, wY + 0.5f, wZ + 0.5f, endU,   endV,   (float) finalAO2, lightVal, 
-            wX - 0.5f, wY + 0.5f, wZ + 0.5f, endU,   endV,   (float) finalAO2, lightVal, 
-            wX - 0.5f, wY + 0.5f, wZ - 0.5f, startU, endV,   (float) finalAO3, lightVal, 
-            wX - 0.5f, wY - 0.5f, wZ - 0.5f, startU, startV, (float) finalAO0, lightVal 
-        };
-
-        meshVertices.insert(meshVertices.end(), std::begin(face), std::end(face));
-    }  
+            float face[] = {
+                wX - 0.5f, wY - 0.5f, wZ - 0.5f,  startU, startV, (float) ao0, lightVal,
+                wX - 0.5f, wY - 0.5f, wZ + 0.5f,  endU,   startV, (float) ao1, lightVal,
+                wX - 0.5f, wY + 0.5f, wZ + 0.5f,  endU,   endV,   (float) ao2, lightVal,
+                wX - 0.5f, wY + 0.5f, wZ + 0.5f,  endU,   endV,   (float) ao2, lightVal,
+                wX - 0.5f, wY + 0.5f, wZ - 0.5f,  startU, endV,   (float) ao3, lightVal,
+                wX - 0.5f, wY - 0.5f, wZ - 0.5f,  startU, startV, (float) ao0, lightVal,
+            };
+            meshVertices.insert(meshVertices.end(), std::begin(face), std::end(face));
+        }
+    }
     // checks front of the block and creates a face and maps the textures
     if (localZ == CHUNK_DEPTH - 1 || manager->isTransparent(getBlock(localX, localY, localZ + 1))) {
         uvs = manager->uvCalculator(blockID, FACE_FRONT);
@@ -611,31 +594,27 @@ void Chunk::addBlockVertices(std::vector<float>& meshVertices, int localX, int l
         endU = uvs[2];
         endV = uvs[3];
         
-        // helper variables that will help with the anisotropy
-        int finalAO1, finalAO2, finalAO3, finalAO0;
-
         if (ao0 + ao2 < ao1 + ao3) {
-            finalAO0 = ao3;
-            finalAO1 = ao0;
-            finalAO2 = ao1;
-            finalAO3 = ao2;
+            float face[] = {
+                wX + 0.5f, wY - 0.5f, wZ + 0.5f,  endU,   startV, (float) ao1, lightVal,
+                wX + 0.5f, wY + 0.5f, wZ + 0.5f,  endU,   endV,   (float) ao2, lightVal,
+                wX - 0.5f, wY + 0.5f, wZ + 0.5f,  startU, endV,   (float) ao3, lightVal,
+                wX - 0.5f, wY + 0.5f, wZ + 0.5f,  startU, endV,   (float) ao3, lightVal,
+                wX - 0.5f, wY - 0.5f, wZ + 0.5f,  startU, startV, (float) ao0, lightVal,
+                wX + 0.5f, wY - 0.5f, wZ + 0.5f,  endU,   startV, (float) ao1, lightVal,
+            };
+            meshVertices.insert(meshVertices.end(), std::begin(face), std::end(face));
         } else {
-            finalAO0 = ao0;
-            finalAO1 = ao1;
-            finalAO2 = ao2;
-            finalAO3 = ao3;
-        };
-
-        float face[] = {
-            wX - 0.5f, wY - 0.5f, wZ + 0.5f,          startU, startV, (float) finalAO0, lightVal,
-            wX + 0.5f, wY - 0.5f, wZ + 0.5f,          endU,   startV, (float) finalAO1, lightVal,
-            wX + 0.5f, wY + 0.5f, wZ + 0.5f,          endU,   endV,   (float) finalAO2, lightVal,
-            wX + 0.5f, wY + 0.5f, wZ + 0.5f,          endU,   endV,   (float) finalAO2, lightVal,
-            wX - 0.5f, wY + 0.5f, wZ + 0.5f,          startU, endV,   (float) finalAO3, lightVal,
-            wX - 0.5f, wY - 0.5f, wZ + 0.5f,          startU, startV, (float) finalAO0, lightVal
-        };
-
-        meshVertices.insert(meshVertices.end(), std::begin(face), std::end(face));
+            float face[] = {
+                wX - 0.5f, wY - 0.5f, wZ + 0.5f,  startU, startV, (float) ao0, lightVal,
+                wX + 0.5f, wY - 0.5f, wZ + 0.5f,  endU,   startV, (float) ao1, lightVal,
+                wX + 0.5f, wY + 0.5f, wZ + 0.5f,  endU,   endV,   (float) ao2, lightVal,
+                wX + 0.5f, wY + 0.5f, wZ + 0.5f,  endU,   endV,   (float) ao2, lightVal,
+                wX - 0.5f, wY + 0.5f, wZ + 0.5f,  startU, endV,   (float) ao3, lightVal,
+                wX - 0.5f, wY - 0.5f, wZ + 0.5f,  startU, startV, (float) ao0, lightVal,
+            };
+            meshVertices.insert(meshVertices.end(), std::begin(face), std::end(face));
+        }
     }
     // checks back of the block and creates a face and maps the textures
     if (localZ == 0 || manager->isTransparent(getBlock(localX, localY, localZ - 1))) {
@@ -654,30 +633,26 @@ void Chunk::addBlockVertices(std::vector<float>& meshVertices, int localX, int l
         endU = uvs[2];
         endV = uvs[3];
 
-        // helper variables that will help with the anisotropy
-        int finalAO1, finalAO2, finalAO3, finalAO0;
-
         if (ao0 + ao2 < ao1 + ao3) {
-            finalAO0 = ao1;
-            finalAO1 = ao2;
-            finalAO2 = ao3;
-            finalAO3 = ao0;
+            float face[] = {
+                wX - 0.5f, wY - 0.5f, wZ - 0.5f,  endU,   startV, (float) ao1, lightVal,
+                wX - 0.5f, wY + 0.5f, wZ - 0.5f,  endU,   endV,   (float) ao2, lightVal,
+                wX + 0.5f, wY + 0.5f, wZ - 0.5f,  startU, endV,   (float) ao3, lightVal,
+                wX + 0.5f, wY + 0.5f, wZ - 0.5f,  startU, endV,   (float) ao3, lightVal,
+                wX + 0.5f, wY - 0.5f, wZ - 0.5f,  startU, startV, (float) ao0, lightVal,
+                wX - 0.5f, wY - 0.5f, wZ - 0.5f,  endU,   startV, (float) ao1, lightVal,
+            };
+            meshVertices.insert(meshVertices.end(), std::begin(face), std::end(face));
         } else {
-            finalAO0 = ao0;
-            finalAO1 = ao1;
-            finalAO2 = ao2;
-            finalAO3 = ao3;
-        };
-
-        float face[] = {
-            wX + 0.5f, wY - 0.5f, wZ - 0.5f,          startU, startV, (float) finalAO0, lightVal,
-            wX - 0.5f, wY - 0.5f, wZ - 0.5f,          endU,   startV, (float) finalAO1, lightVal,
-            wX - 0.5f, wY + 0.5f, wZ - 0.5f,          endU,   endV,   (float) finalAO2, lightVal,
-            wX - 0.5f, wY + 0.5f, wZ - 0.5f,          endU,   endV,   (float) finalAO2, lightVal,
-            wX + 0.5f, wY + 0.5f, wZ - 0.5f,          startU, endV,   (float) finalAO3, lightVal,
-            wX + 0.5f, wY - 0.5f, wZ - 0.5f,          startU, startV, (float) finalAO0, lightVal
-        };
-
-        meshVertices.insert(meshVertices.end(), std::begin(face), std::end(face));
-    }
+            float face[] = {
+                wX + 0.5f, wY - 0.5f, wZ - 0.5f,  startU, startV, (float) ao0, lightVal,
+                wX - 0.5f, wY - 0.5f, wZ - 0.5f,  endU,   startV, (float) ao1, lightVal,
+                wX - 0.5f, wY + 0.5f, wZ - 0.5f,  endU,   endV,   (float) ao2, lightVal,
+                wX - 0.5f, wY + 0.5f, wZ - 0.5f,  endU,   endV,   (float) ao2, lightVal,
+                wX + 0.5f, wY + 0.5f, wZ - 0.5f,  startU, endV,   (float) ao3, lightVal,
+                wX + 0.5f, wY - 0.5f, wZ - 0.5f,  startU, startV, (float) ao0, lightVal,
+            };
+            meshVertices.insert(meshVertices.end(), std::begin(face), std::end(face));
+        }
+}
 }

@@ -15,6 +15,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/geometric.hpp>
+#include <chunkmanager.h>
 
 // helper method to get file path
 std::string getExecutableDir() {
@@ -61,10 +62,13 @@ int main() {
     BlockManager manager;
 
     // 6. Initiates new chunk
-    Chunk chunk(0,0,&manager);
+    // Chunk chunk(0,0,&manager);
+    ChunkManager worldManager;
 
     // 7. game loop
     while(!window.shouldClose()) {
+        worldManager.update(camera);
+
         // Per-frame time logic
         float currentFrame = static_cast<float>(glfwGetTime());
         deltaTime = currentFrame - lastFrame;
@@ -82,10 +86,9 @@ int main() {
         ourShader.setInt("texture1", 0);
         glActiveTexture(GL_TEXTURE0);
         texture.bind(); // Your loaded atlas.png
-        chunk.render();
 
         // Pass matrices to shader
-        glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), 800.0f / 600.0f, 0.1f, 100.0f);
+        glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), 800.0f / 600.0f, 0.1f, 1000.0f);
         ourShader.setMat4("projection", projection);
 
         glm::mat4 view = camera.GetViewMatrix();
@@ -94,7 +97,10 @@ int main() {
         glm::mat4 model = glm::mat4(1.0f); // Static cube at 0,0,0
         ourShader.setMat4("model", model);
 
-        chunk.render();
+        // Loop through sorted, visible chunk collection and render them
+        for (Chunk* pChunk : worldManager.getRenderList()) {
+            pChunk->render();
+        }
 
         // Swap buffers & poll events
         window.swapBuffers();

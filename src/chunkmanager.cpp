@@ -2,21 +2,37 @@
 #include "chunk.h"
 
 ChunkManager::ChunkManager() {
+    for (int x = -5; x <= 5; x++) {
+        for (int z = -5; z <= 5; z++) {
+            glm::ivec2 pos(x, z);
+            
+            // 1. Allocate the clean memory shells inside your map
+            m_activeChunks[pos] = new Chunk(x, z, &m_blockManager);
+            
+            // 2. Queue them up for the pipeline stages to process step-by-step
+            m_loadList.push_back(pos);
+            m_setupList.push_back(pos);
+            m_rebuildList.push_back(pos);
+        }
+    }
+}
 
+ChunkManager::~ChunkManager() {
+    for (auto const& pair : m_activeChunks) {
+        delete pair.second; // Safely releases the Chunk* memory allocation
+    }
+    m_activeChunks.clear();
 }
 
 void ChunkManager::update(Camera Camera) {
     updateLoadList();
     updateSetupList();
     updateRebuildList();
-    updateReloadList();
     updateUnloadList();
 
     updateVisibilityList(Camera);
+    updateRenderList();
 
-    if (m_cameraPos != Camera.Position || m_cameraView != Camera.Front) 
-        updateRenderList();
-        
     m_cameraPos = Camera.Position;
     m_cameraView = Camera.Front;
 }
@@ -86,16 +102,13 @@ void ChunkManager::updateRebuildList() {
             if (numOfRebuiltChunks != NUM_OF_CHUNKS_LOADED_PER_FRAME) {
                 pChunk -> rebuildMesh();
 
-                // done to check neighbours
                 m_flagsList.push_back(pChunk);
 
-                // use the loop's chunkPos instead of accessing private Chunk members
                 Chunk* chunkXMinus = getChunk(chunkPos.x - 1, chunkPos.y);
                 Chunk* chunkXPlus = getChunk(chunkPos.x + 1, chunkPos.y);
                 Chunk* chunkZMinus = getChunk(chunkPos.x, chunkPos.y - 1);
                 Chunk* chunkZPlus = getChunk(chunkPos.x, chunkPos.y + 1);
 
-                // only rebuilds a certain number of chunks per frame
                 if (chunkXMinus != NULL) m_flagsList.push_back(chunkXMinus);
                 if (chunkXPlus != NULL) m_flagsList.push_back(chunkXPlus);
                 if (chunkZMinus != NULL) m_flagsList.push_back(chunkZMinus);
@@ -127,7 +140,7 @@ void ChunkManager::updateUnloadList() {
 }
 
 void ChunkManager::updateVisibilityList(Camera Camera) {
-    if (m_cameraPos != Camera.Position && forceVisibilityUpdate == false) {
+    if (m_cameraPos == Camera.Position && m_cameraView == Camera.Front && forceVisibilityUpdate == false) {
         return;
     }
 
@@ -136,7 +149,10 @@ void ChunkManager::updateVisibilityList(Camera Camera) {
 
     glm::vec3 lookDir = glm::normalize(Camera.Front);
 
-    for (auto const& [chunkPos, pChunk] : m_activeChunks) {
+    for (auto const& pair : m_activeChunks) {
+        glm::ivec2 chunkPos = pair.first;
+        Chunk* pChunk = pair.second;
+
         if (pChunk == nullptr || !pChunk->isLoaded()) {
             if (pChunk) pChunk->isVisible = false;
             continue;
@@ -147,13 +163,11 @@ void ChunkManager::updateVisibilityList(Camera Camera) {
         float chunkCenterZ = (pChunk->gridZ * CHUNK_DEPTH) + (CHUNK_DEPTH / 2.0f);
 
         // Compute displacement vector from player camera to chunk center
-        glm::vec3 targetVector(
+        glm::vec2 flatVector(
             chunkCenterX - m_cameraPos.x,
-            128.0f - m_cameraPos.y, // Using world mid-height baseline
             chunkCenterZ - m_cameraPos.z
         );
-
-        float distance = glm::length(targetVector);
+        float distance = glm::length(flatVector);
 
         if (distance > MAX_RENDER_DISTANCE) {
             pChunk->isVisible = false;
@@ -161,14 +175,18 @@ void ChunkManager::updateVisibilityList(Camera Camera) {
         }
 
         // Normalize your target vector to isolate pure angular direction
-        glm::vec3 targetDir = glm::normalize(targetVector);
-        
+        glm::vec3 targetDir = glm::normalize(glm::vec3(flatVector.x, 0.0f, flatVector.y));
+
+        // Flatten the look direction too so Y doesn't affect the comparison
+        glm::vec3 flatLookDir = glm::normalize(glm::vec3(lookDir.x, 0.0f, lookDir.z));
+
         // The dot product of two normalized vectors yields cos(theta)
-        float dotProduct = glm::dot(lookDir, targetDir);
+        float dotProduct = glm::dot(flatLookDir, targetDir);
 
-
-        // If the dot product is less than cos(45), the chunk is outside your 90-degree visual cone.
-        if (dotProduct < 0.707f) {
+        // Chunks very close to the camera are always visible (player may be inside them).
+        // Beyond that, cull anything behind the camera with a small margin.
+        bool nearby = distance < (float)(CHUNK_WIDTH * 2);
+        if (!nearby && dotProduct < -0.3f) {
             pChunk->isVisible = false;
             continue;
         }
@@ -180,7 +198,40 @@ void ChunkManager::updateVisibilityList(Camera Camera) {
 }
 
 void ChunkManager::updateRenderList() {
-    
+    m_renderList.clear();
+
+    std::vector<std::pair<float, Chunk*>> distancePass;
+
+    for (const glm::ivec2& chunkPos : m_visibilityList) {
+        Chunk* pChunk = m_activeChunks[chunkPos];
+
+        if (pChunk == nullptr || !pChunk->isLoaded()) {
+            continue;
+        }
+
+        float chunkCenterX = (pChunk->gridX * CHUNK_WIDTH) + (CHUNK_WIDTH / 2.0f);
+        float chunkCenterZ = (pChunk->gridZ * CHUNK_DEPTH) + (CHUNK_DEPTH / 2.0f);
+
+        float dx = chunkCenterX - m_cameraPos.x;
+        float dz = chunkCenterZ - m_cameraPos.z;
+
+        float squaredDistance = (dx * dx) + (dz * dz);
+
+        // Store the calculation into our temporary pass list
+        distancePass.push_back({squaredDistance, pChunk});
+    }
+
+    // Sort the temporary list using a C++ Lambda predicate (Front-to-Back order)
+    std::sort(distancePass.begin(), distancePass.end(), 
+        [](const std::pair<float, Chunk*>& a, const std::pair<float, Chunk*>& b) {
+            return a.first < b.first; // Change to '>' if you are sorting transparent meshes Back-to-Front later
+        }
+    );
+
+    // Extract the sorted chunk pointers back into your master m_renderList array container
+    for (const auto& pair : distancePass) {
+        m_renderList.push_back(pair.second);
+    }
 }
 
 // private helper function to get chunk
@@ -196,4 +247,8 @@ Chunk* ChunkManager::getChunk(int gridX, int gridZ) {
         return search->second;
     }
     return nullptr;
+}
+
+const std::vector<Chunk*>& ChunkManager::getRenderList() const { 
+    return m_renderList; 
 }
