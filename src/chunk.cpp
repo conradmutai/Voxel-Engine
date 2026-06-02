@@ -62,8 +62,8 @@ void Chunk::load() {
             wZ = (gridZ * CHUNK_DEPTH) + z;
 
             // Scales coordinates for the noise frequency
-            scaleX = wX * 0.005f;
-            scaleZ = wZ * 0.005f;
+            scaleX = wX * 0.01f;
+            scaleZ = wZ * 0.01f;
 
             // Generates the noise value from glm::noise in range (-1.0 to 1.0) 
             noiseVal = glm::perlin(glm::vec2(scaleX, scaleZ));

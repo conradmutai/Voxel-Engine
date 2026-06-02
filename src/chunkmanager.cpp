@@ -2,8 +2,8 @@
 #include "chunk.h"
 
 ChunkManager::ChunkManager() {
-    for (int x = -10; x <= 10; x++) {
-        for (int z = -10; z <= 10; z++) {
+    for (int x = -6; x <= 6; x++) {
+        for (int z = -6; z <= 6; z++) {
             glm::ivec2 pos(x, z);
             
             // 1. Allocate the clean memory shells inside your map
