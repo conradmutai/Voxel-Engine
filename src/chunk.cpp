@@ -4,10 +4,10 @@
 static uint8_t sunlightLookup[16] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
 static uint8_t artificialLightLookup[16] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
 
-Chunk::Chunk(int gridX, int gridZ, BlockManager* manager) : gridX(gridX), gridZ(gridZ), manager(manager), isDirty(true), vertexCount(0) {
+Chunk::Chunk(int gridX, int gridZ, BlockManager* manager) : gridX(gridX), gridZ(gridZ), manager(manager), isDirty(true), vertexCount(0), isVisible(true) {
     // 1. Heap Allocation for the 1D Array (Initialized to 0/AIR)
-    blocks = new uint8_t[CHUNK_WIDTH * CHUNK_HEIGHT * CHUNK_DEPTH]();
-    lightMap = new uint8_t[CHUNK_WIDTH * CHUNK_HEIGHT * CHUNK_DEPTH]();
+    blocks = nullptr;
+    lightMap = nullptr;
 
     // // 2. Generate Basic Flat Terrain 
     // for (int z = 0; z < CHUNK_DEPTH; ++z) {
@@ -23,6 +23,29 @@ Chunk::Chunk(int gridX, int gridZ, BlockManager* manager) : gridX(gridX), gridZ(
     //         }
     //     }
     // }
+
+
+    // ---------------------- AO TESTING CODE ----------------------
+    // for (int x = 0; x < CHUNK_WIDTH; x++) {
+    //     setBlock(x, 16, 3, STONE);
+    // }
+    // -------------------------------------------------------------
+
+    // generates the buffer and vertex arrays
+    glGenVertexArrays(1, &VAO);
+    glGenBuffers(1, &VBO);
+}
+
+Chunk::~Chunk() {
+    delete[] blocks;
+    delete[] lightMap;
+    glDeleteVertexArrays(1, &VAO);
+    glDeleteBuffers(1, &VBO);
+}
+
+void Chunk::load() {
+    blocks = new uint8_t[CHUNK_WIDTH * CHUNK_HEIGHT * CHUNK_DEPTH]();
+    lightMap = new uint8_t[CHUNK_WIDTH * CHUNK_HEIGHT * CHUNK_DEPTH]();
 
     // declaring variables which hold the global address value (wX is worldX, wZ is worldZ)
     int wX, wY, wZ;
@@ -66,25 +89,41 @@ Chunk::Chunk(int gridX, int gridZ, BlockManager* manager) : gridX(gridX), gridZ(
             }
         }
     }
-
-    // ---------------------- AO TESTING CODE ----------------------
-    for (int x = 0; x < CHUNK_WIDTH; x++) {
-        setBlock(x, 16, 3, STONE);
-    }
-    // -------------------------------------------------------------
-
-    sunlightLevel();
-
-    // generates the buffer and vertex arrays
-    glGenVertexArrays(1, &VAO);
-    glGenBuffers(1, &VBO);
 }
 
-Chunk::~Chunk() {
+bool Chunk::isLoaded() {
+    if (blocks != NULL && lightMap != NULL) {
+        return true;
+    }
+
+    return false;
+}
+
+void Chunk::setup() {
+    sunlightLevel();
+
+    m_isSetup = true; 
+    isDirty = true;
+}
+
+bool Chunk::isSetup() {
+    if (m_isSetup) {
+        return true;
+    }
+
+    return false;
+}
+
+void Chunk::rebuildMesh() {
+    generateMesh();
+}
+
+void Chunk::unload() {
     delete[] blocks;
     delete[] lightMap;
-    glDeleteVertexArrays(1, &VAO);
-    glDeleteBuffers(1, &VBO);
+
+    blocks = nullptr;
+    lightMap = nullptr;
 }
 
 int Chunk::getIndex(int x, int y, int z) const {

@@ -7,15 +7,15 @@
 #include <vector>
 #include <cstdint>
 
-// Your master world tracking structure
-std::unordered_map<glm::ivec2, Chunk*, KeyHash> activeChunks;
-
 const int CHUNK_WIDTH = 16;
 const int CHUNK_HEIGHT = 256;
 const int CHUNK_DEPTH = 16;
 
 class Chunk {
     public:
+        int gridX, gridZ;
+        bool isVisible = false;
+
         Chunk(int gridX, int gridZ, BlockManager* manager);
         ~Chunk();
 
@@ -25,8 +25,20 @@ class Chunk {
         void setBlock(int x, int y, int z, uint8_t id);
         uint8_t getBlock(int x, int y, int z) const;
 
+        bool isLoaded();
+        void load();
+        void setup();
+        bool isSetup();
+
+        void rebuildMesh();
+        void unload();
+
+        int getX(); 
+        int getY();
+        int getZ();
+
     private:
-        int gridX, gridZ;
+        bool m_isSetup = false;
         uint8_t* blocks;
         
         unsigned int VAO, VBO;

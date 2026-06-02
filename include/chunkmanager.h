@@ -6,6 +6,7 @@
 
 #include <unordered_map>
 #include <glm/glm.hpp>
+#include <glm/geometric.hpp>
 
 // A custom hash function to allow glm::ivec2 (or a custom struct) to be used as a Key
 struct KeyHash {
@@ -14,27 +15,47 @@ struct KeyHash {
     }
 };
 
+// Your master world tracking structure
+std::unordered_map<glm::ivec2, Chunk*, KeyHash> m_activeChunks;
+
+const int NUM_OF_CHUNKS_LOADED_PER_FRAME = 10;
+const int MAX_RENDER_DISTANCE = 10;
+
 class ChunkManager {
     public: 
         // constructor and destructor
         ChunkManager();
         ~ChunkManager();
 
-        void update(const glm::vec3& cameraPos); // takes in the address of the current camera position to carry out tasks like rendering based on its position
+        void update(Camera Camera); // takes in the address of the current camera position to carry out tasks like rendering based on its position
 
         // all the updates that store, load, update the chunks
         void updateLoadList();
         void updateSetupList();
         void updateRebuildList();
         void updateReloadList();
-        void updateVisibilityList();
+        void updateUnloadList();
+        void updateVisibilityList(Camera Camera);
         void updateRenderList(); 
 
     private:
-        // this is the active map that holds the current chunks
-        std::unordered_map<glm::ivec2, Chunk*, KeyHash> m_activeChunks;
+        bool forceVisibilityUpdate = false;
 
         // these hold the chunks which need to be loaded or rebuilt based on if it is modified in game
         std::vector<glm::ivec2> m_loadList;
         std::vector<glm::ivec2> m_rebuildList;
+        std::vector<glm::ivec2> m_setupList;
+        std::vector<glm::ivec2> m_rebuildList;
+        std::vector<glm::ivec2> m_unloadList;
+        std::vector<glm::ivec2> m_visibilityList;
+
+        // stores the flag updates for the chunks
+        std::vector<Chunk*> m_flagsList;
+
+        // holds a static camera position thats updated everytime its called
+        glm::vec3 m_cameraPos;
+        glm::vec3 m_cameraView;
+
+        // helper functions
+        Chunk* getChunk(int gridX, int gridZ);
 };
