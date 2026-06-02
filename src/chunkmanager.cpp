@@ -2,12 +2,13 @@
 #include "chunk.h"
 
 ChunkManager::ChunkManager() {
-    for (int x = -5; x <= 5; x++) {
-        for (int z = -5; z <= 5; z++) {
+    for (int x = -10; x <= 10; x++) {
+        for (int z = -10; z <= 10; z++) {
             glm::ivec2 pos(x, z);
             
             // 1. Allocate the clean memory shells inside your map
             m_activeChunks[pos] = new Chunk(x, z, &m_blockManager);
+            m_activeChunks[pos]->setWorld(this);  
             
             // 2. Queue them up for the pipeline stages to process step-by-step
             m_loadList.push_back(pos);
@@ -38,89 +39,62 @@ void ChunkManager::update(Camera Camera) {
 }
 
 void ChunkManager::updateLoadList() {
-    // checks the num of chunks loaded
     int numOfChunksLoaded = 0;
-
-    // iterator declared to go through all the chunks in the load list
-    std::vector<glm::ivec2>::iterator iterator;
-    for (iterator = m_loadList.begin(); iterator != m_loadList.end() && numOfChunksLoaded != NUM_OF_CHUNKS_LOADED_PER_FRAME; ++iterator) {
-        // retrieves the chunk pos from the iterator
-        glm::ivec2 chunkPos = *iterator;
-        
-        // assigns the chunk
-        Chunk* Chunk = m_activeChunks[chunkPos];
-
-        if(Chunk -> isLoaded() == false) {
-            if (numOfChunksLoaded != NUM_OF_CHUNKS_LOADED_PER_FRAME) {
-                Chunk -> load();
-                numOfChunksLoaded++;
-                forceVisibilityUpdate = true;
-            }
+    auto iterator = m_loadList.begin();
+    while (iterator != m_loadList.end() && numOfChunksLoaded != NUM_OF_CHUNKS_LOADED_PER_FRAME) {
+        Chunk* chunk = m_activeChunks[*iterator];
+        if (!chunk->isLoaded()) {
+            chunk->load();
+            numOfChunksLoaded++;
+            forceVisibilityUpdate = true;
         }
+        iterator = m_loadList.erase(iterator); // processed -> drop it, advance
     }
-
-    m_loadList.clear();
+    // leftover chunks stay in m_loadList for next frame
 }
 
 void ChunkManager::updateSetupList() {
-    // initializes the iterator
-    std::vector<glm::ivec2>::iterator iterator;
-
-    glm::ivec2 chunkPos;
-    Chunk* pChunk;
-
-    // loops through the setup list
-    for (iterator = m_setupList.begin(); iterator != m_setupList.end(); ++iterator) {
-        // obtains the iterator
-        chunkPos = *iterator;
-
-        // gets a chunk from that position
-        pChunk = m_activeChunks[chunkPos];
-        if (pChunk -> isLoaded() && pChunk -> isSetup() == false) { // checks if the chunk is loaded and if it is setup
-            pChunk -> setup();
-            if (pChunk -> isSetup()) 
-                forceVisibilityUpdate = true;
+    auto iterator = m_setupList.begin();
+    while (iterator != m_setupList.end()) {
+        Chunk* pChunk = m_activeChunks[*iterator];
+        if (pChunk->isLoaded() && !pChunk->isSetup()) {
+            pChunk->setup();
+            forceVisibilityUpdate = true;
+            iterator = m_setupList.erase(iterator);
+        } else if (pChunk->isSetup()) {
+            iterator = m_setupList.erase(iterator); // already done
+        } else {
+            ++iterator; // not loaded yet, keep for later
         }
     }
-
-    m_setupList.clear();
 }
 
 void ChunkManager::updateRebuildList() {
     int numOfRebuiltChunks = 0;
-    std::vector<glm::ivec2>::iterator iterator;
+    auto iterator = m_rebuildList.begin();
+    while (iterator != m_rebuildList.end() && numOfRebuiltChunks != NUM_OF_CHUNKS_LOADED_PER_FRAME) {
+        Chunk* pChunk = m_activeChunks[*iterator];
+        if (pChunk->isLoaded() && pChunk->isSetup()) {
+            pChunk->rebuildMesh();
+            m_flagsList.push_back(pChunk);
 
-    glm::ivec2 chunkPos;
-    Chunk* pChunk;
+            glm::ivec2 chunkPos = *iterator;
+            Chunk* chunkXMinus = getChunk(chunkPos.x - 1, chunkPos.y);
+            Chunk* chunkXPlus  = getChunk(chunkPos.x + 1, chunkPos.y);
+            Chunk* chunkZMinus = getChunk(chunkPos.x, chunkPos.y - 1);
+            Chunk* chunkZPlus  = getChunk(chunkPos.x, chunkPos.y + 1);
+            if (chunkXMinus) m_flagsList.push_back(chunkXMinus);
+            if (chunkXPlus)  m_flagsList.push_back(chunkXPlus);
+            if (chunkZMinus) m_flagsList.push_back(chunkZMinus);
+            if (chunkZPlus)  m_flagsList.push_back(chunkZPlus);
 
-    for (iterator = m_rebuildList.begin(); iterator != m_rebuildList.end(); ++iterator) {
-        chunkPos = *iterator;
-
-        // pChunk is present Chunk
-        pChunk = m_activeChunks[chunkPos];
-        if(pChunk -> isLoaded() && pChunk -> isSetup()) {
-            if (numOfRebuiltChunks != NUM_OF_CHUNKS_LOADED_PER_FRAME) {
-                pChunk -> rebuildMesh();
-
-                m_flagsList.push_back(pChunk);
-
-                Chunk* chunkXMinus = getChunk(chunkPos.x - 1, chunkPos.y);
-                Chunk* chunkXPlus = getChunk(chunkPos.x + 1, chunkPos.y);
-                Chunk* chunkZMinus = getChunk(chunkPos.x, chunkPos.y - 1);
-                Chunk* chunkZPlus = getChunk(chunkPos.x, chunkPos.y + 1);
-
-                if (chunkXMinus != NULL) m_flagsList.push_back(chunkXMinus);
-                if (chunkXPlus != NULL) m_flagsList.push_back(chunkXPlus);
-                if (chunkZMinus != NULL) m_flagsList.push_back(chunkZMinus);
-                if (chunkZPlus != NULL) m_flagsList.push_back(chunkZPlus);
-
-                numOfRebuiltChunks++;
-                forceVisibilityUpdate = true;
-            }
+            numOfRebuiltChunks++;
+            forceVisibilityUpdate = true;
+            iterator = m_rebuildList.erase(iterator);
+        } else {
+            ++iterator; // not ready this frame, keep it
         }
     }
-
-    m_rebuildList.clear();
 }
 
 void ChunkManager::updateUnloadList() {
@@ -247,6 +221,31 @@ Chunk* ChunkManager::getChunk(int gridX, int gridZ) {
         return search->second;
     }
     return nullptr;
+}
+
+// floor division so negative coords land in the right chunk
+static int floorDiv(int a, int b) {
+    int q = a / b, r = a % b;
+    if (r != 0 && ((r < 0) != (b < 0))) q--;
+    return q;
+}
+
+uint8_t ChunkManager::getBlockWorld(int wx, int wy, int wz) {
+    if (wy < 0 || wy >= CHUNK_HEIGHT) return AIR;
+    int gx = floorDiv(wx, CHUNK_WIDTH);
+    int gz = floorDiv(wz, CHUNK_DEPTH);
+    Chunk* c = getChunk(gx, gz);
+    if (!c || !c->isLoaded()) return AIR;   // neighbour not generated yet
+    return c->getBlock(wx - gx * CHUNK_WIDTH, wy, wz - gz * CHUNK_DEPTH);
+}
+
+int ChunkManager::getLightWorld(int wx, int wy, int wz) {
+    if (wy < 0 || wy >= CHUNK_HEIGHT) return 15;
+    int gx = floorDiv(wx, CHUNK_WIDTH);
+    int gz = floorDiv(wz, CHUNK_DEPTH);
+    Chunk* c = getChunk(gx, gz);
+    if (!c || !c->isLoaded()) return 15;
+    return c->getLight(wx - gx * CHUNK_WIDTH, wy, wz - gz * CHUNK_DEPTH);
 }
 
 const std::vector<Chunk*>& ChunkManager::getRenderList() const { 

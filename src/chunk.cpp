@@ -1,4 +1,5 @@
 #include "chunk.h"
+#include "chunkmanager.h"
 #include <glm/gtc/noise.hpp>
 
 static uint8_t sunlightLookup[16] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
@@ -61,8 +62,8 @@ void Chunk::load() {
             wZ = (gridZ * CHUNK_DEPTH) + z;
 
             // Scales coordinates for the noise frequency
-            scaleX = wX * 0.02f;
-            scaleZ = wZ * 0.02f;
+            scaleX = wX * 0.005f;
+            scaleZ = wZ * 0.005f;
 
             // Generates the noise value from glm::noise in range (-1.0 to 1.0) 
             noiseVal = glm::perlin(glm::vec2(scaleX, scaleZ));
@@ -126,6 +127,10 @@ void Chunk::unload() {
     lightMap = nullptr;
 }
 
+void Chunk::setWorld(ChunkManager* world) {
+    m_world = world;
+}
+
 int Chunk::getIndex(int x, int y, int z) const {
     // Executes the flattening formula 
     int index = x + (y * CHUNK_WIDTH) + (z * CHUNK_WIDTH * CHUNK_HEIGHT); 
@@ -141,10 +146,13 @@ void Chunk::setBlock(int x, int y, int z, uint8_t id) {
 }
 
 uint8_t Chunk::getBlock(int x, int y, int z) const {
-    if (x >= 0 && x < CHUNK_WIDTH && y >= 0 && y < CHUNK_HEIGHT && z >= 0 && z < CHUNK_DEPTH) {
-        return blocks[getIndex(x,y,z)];
+    if (y < 0 || y >= CHUNK_HEIGHT) return AIR;
+    if (x >= 0 && x < CHUNK_WIDTH && z >= 0 && z < CHUNK_DEPTH) {
+        return blocks ? blocks[getIndex(x,y,z)] : AIR;
     }
-
+    if (m_world) {
+        return m_world->getBlockWorld(gridX * CHUNK_WIDTH + x, y, gridZ * CHUNK_DEPTH + z);
+    }
     return AIR;
 }
 
@@ -164,8 +172,10 @@ int Chunk::getLight(int localX, int localY, int localZ) {
     if (localX >= 0 && localX < CHUNK_WIDTH && localY >= 0 && localY < CHUNK_HEIGHT && localZ >= 0 && localZ < CHUNK_DEPTH) {
         return lightMap[getIndex(localX, localY, localZ)];
     }
-
-    return 15; // out-of-bounds = exposed to sky, assume full light
+    if (m_world) {
+        return m_world->getLightWorld(gridX * CHUNK_WIDTH + localX, localY, gridZ * CHUNK_DEPTH + localZ);
+    }
+    return 15;
 }
 
 // sets the sunlight level for all the blocks at initialization

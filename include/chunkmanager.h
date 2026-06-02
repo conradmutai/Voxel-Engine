@@ -35,6 +35,9 @@ class ChunkManager {
         void updateVisibilityList(Camera Camera);
         void updateRenderList(); 
 
+        uint8_t getBlockWorld(int wx, int wy, int wz);
+        int getLightWorld(int wx, int wy, int wz);
+
         const std::vector<Chunk*>& getRenderList() const;
 
     private:

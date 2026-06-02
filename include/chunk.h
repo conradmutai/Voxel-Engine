@@ -11,6 +11,8 @@ const int CHUNK_WIDTH = 16;
 const int CHUNK_HEIGHT = 256;
 const int CHUNK_DEPTH = 16;
 
+class ChunkManager;
+
 class Chunk {
     public:
         int gridX, gridZ;
@@ -33,19 +35,23 @@ class Chunk {
         void rebuildMesh();
         void unload();
 
-        int getX(); 
+        void setWorld(ChunkManager* world);
+
+        int getX();
         int getY();
         int getZ();
 
     private:
         bool m_isSetup = false;
         uint8_t* blocks;
-        
+
         unsigned int VAO, VBO;
         int vertexCount;
         bool isDirty;
 
         uint8_t* lightMap;
+
+        ChunkManager* m_world = nullptr;
 
         // private pointer to hold manager
         BlockManager* manager;
