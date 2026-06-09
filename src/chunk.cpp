@@ -78,7 +78,7 @@ void Chunk::load() {
                     if (y == (int) terrainHeight - 1) { 
                         setBlock(x, y, z, GRASS);
                     } else {
-                        if (y > (int) terrainHeight - 5) {
+                        if (y > (int) terrainHeight - 10) {
                             setBlock(x, y, z, DIRT);
                         } else {
                             setBlock(x, y, z, STONE); 

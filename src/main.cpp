@@ -11,6 +11,7 @@
 #include "texture.h"
 #include "window.h"
 #include "chunk.h"
+#include "raycaster.h"
 
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -64,6 +65,7 @@ int main() {
     // 6. Initiates new chunk
     // Chunk chunk(0,0,&manager);
     ChunkManager worldManager;
+    RayCaster raycaster;
 
     // 7. game loop
     while(!window.shouldClose()) {
@@ -76,6 +78,9 @@ int main() {
 
         // Process keyboard inputs
         processInput(window.getRawPointer());
+
+        // DDA raycast from camera — t is distance in blocks to the nearest solid voxel
+        float hitDistance = raycaster.findNearest(camera.Position, glm::normalize(camera.Front), &worldManager);
 
         // Render clearing
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
