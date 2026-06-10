@@ -41,6 +41,7 @@ float lastY = 600.0f / 2.0f;
 void mouse_callback(GLFWwindow* window, double xposIn, double yposIn);
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 void processInput(GLFWwindow *window);
+void resolveCollision(Camera &camera, ChunkManager &worldManager);
 
 int main() {
     // 1. Creates window
@@ -78,6 +79,7 @@ int main() {
 
         // Process keyboard inputs
         processInput(window.getRawPointer());
+        resolveCollision(camera, worldManager);
 
         // DDA raycast from camera — t is distance in blocks to the nearest solid voxel
         float hitDistance = raycaster.findNearest(camera.Position, glm::normalize(camera.Front), &worldManager);
@@ -152,4 +154,29 @@ void processInput(GLFWwindow *window) {
         camera.ProcessKeyboard(LEFT, deltaTime);
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
         camera.ProcessKeyboard(RIGHT, deltaTime);
+}
+
+void resolveCollision(Camera &camera, ChunkManager &worldManager) {
+    AABB player(camera.Position, glm::vec3(0.4f, 0.9f, 0.4f));
+
+    for (int dx = -1; dx <= 1; dx++) {
+        for (int dy = -2; dy <= 2; dy++) {
+            for (int dz = -1; dz <= 1; dz++) {
+                int bx = (int)floor(camera.Position.x) + dx;
+                int by = (int)floor(camera.Position.y) + dy;
+                int bz = (int)floor(camera.Position.z) + dz;
+
+                if (worldManager.getBlockWorld(bx, by, bz) == 0)
+                    continue;
+
+                AABB block(glm::vec3(bx + 0.5f, by + 0.5f, bz + 0.5f), glm::vec3(0.5f));
+                auto hit = player.intersectAABB(block);
+
+                if (hit) {
+                    camera.Position += hit->delta;
+                    player.pos = camera.Position;
+                }
+            }
+        }
+    }
 }

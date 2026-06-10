@@ -1,7 +1,7 @@
 # Variables for compiler and flags
 CXX = g++
 CC = gcc
-CXXFLAGS = -std=c++11 -I./include -I. 
+CXXFLAGS = -std=c++17 -I./include -I.
 
 # Standard Apple Silicon framework links
 LDFLAGS = -L./lib -lglfw3 -framework Cocoa -framework OpenGL -framework IOKit -framework CoreFoundation

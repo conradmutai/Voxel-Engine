@@ -5,11 +5,12 @@
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <optional>
 
 // default camera movement
 const float PITCH = 0.0f;
 const float YAW = -90.0f;
-const float SPEED = 100.0f;
+const float SPEED = 15.0f;
 const float SENSITIVITY = 0.2f;
 const float ZOOM = 45.0f;
 
@@ -19,6 +20,102 @@ enum Camera_Movement {
     BACKWARD,
     LEFT,
     RIGHT
+};
+
+// A hit object will be created for each collision that occurs, also made as a struct that means it doenst operate as a function
+struct Hit {
+    public:
+        glm::ivec3 collider; // the world coordinate
+        glm::vec3 pos; // the position coord
+        glm::vec3 delta; // the difference in position
+        glm::vec3 normal; // the normalized value
+        float time; // the time measurement
+
+    // constructor for the hit object
+    Hit(glm::ivec3 collider) {
+        this->collider = collider;
+        this->pos = glm::vec3();
+        this->delta = glm::vec3();
+        this->normal = glm::vec3();
+        this->time = 0.0f;
+    }
+};
+
+// AABB struct made to allow the classification of collision with blocks
+struct AABB {
+    public:
+        glm::vec3 pos; // the position in a world sense
+        glm::vec3 half; // a half way point on the vector (center)
+
+    // constructor
+    AABB(glm::vec3 pos, glm::vec3 half) {
+        this->pos = pos;
+        this->half = half;
+    }
+
+    // function to realize if the intersection occurs leading to the object deflecting
+    std::optional<Hit> intersectAABB(AABB box) {
+        const float dx = box.pos.x - this->pos.x; // difference between two centers
+        const float px = (box.half.x + this->half.x) - glm::abs(dx); // overlap/penetration distance on given axis
+
+        // means that the two objects have no overlap
+        if (px <= 0) {
+            return std::nullopt;
+        }
+
+        const float dy = box.pos.y - this->pos.y;
+        const float py = (box.half.y + this->half.y) - glm::abs(dy);
+
+        if (py <= 0) {
+            return std::nullopt;
+        }
+
+        const float dz = box.pos.z - this->pos.z;
+        const float pz = (box.half.z + this->half.z) - glm::abs(dz);
+
+        if (pz <= 0) {
+            return std::nullopt;
+        }
+
+        Hit hit = Hit(glm::ivec3(this->pos));
+
+        // looks for the smallest overlap and then declares several variables and assigns values
+        if (px < py) {
+            if (px < pz) {
+                const int sx = (dx >= 0) ? 1 : -1; // gets the sign 
+                hit.delta.x = -px * sx;
+                hit.normal.x = sx;
+                hit.pos.x = this->pos.x + (this->half.x * sx);
+                hit.pos.y = box.pos.y;
+                hit.pos.z = box.pos.z;
+            } else {
+                const int sz = (dz >= 0) ? 1 : -1;
+                hit.delta.z = -pz * sz;
+                hit.normal.z = sz;
+                hit.pos.x = box.pos.x;
+                hit.pos.y = box.pos.y;
+                hit.pos.z = this->pos.z + (this->half.z * sz);
+            }
+        } else {
+            if (py < pz) { 
+                const int sy = (dy >= 0) ? 1 : -1;
+                hit.delta.y = -py * sy;
+                hit.normal.y = sy;
+                hit.pos.x = box.pos.x;
+                hit.pos.y = this->pos.y + (this->half.y * sy);
+                hit.pos.z = box.pos.z;
+            } else {
+                const int sz = (dz >= 0) ? 1 : -1;
+                hit.delta.z = -pz * sz;
+                hit.normal.z = sz;
+                hit.pos.x = box.pos.x;
+                hit.pos.y = box.pos.y;
+                hit.pos.z = this->pos.z + (this->half.z * sz);
+            }
+        }
+
+        return hit;
+    }
 };
 
 class Camera {
