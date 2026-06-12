@@ -223,22 +223,20 @@ void Chunk::generateMesh() {
         }
     }
 
-    // dividides by 6 to get the actual count of the vertices
-    vertexCount = meshVertices.size() / 7;
-
     isDirty = false;
 }
 
 // uploads a chunk to the GPU
 void Chunk::uploadToGPU() {
-    // binds the vertex array output
+    vertexCount = (int)(meshVertices.size() / 7);
+
+    if (vertexCount == 0) return;
+
     glBindVertexArray(VAO);
 
-    // binds the buffer and the meshvertices to the vertex buffer output
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, meshVertices.size() * sizeof(float), meshVertices.data(), GL_DYNAMIC_DRAW); // changed from GL_STATIC_DRAW to GL_DYNAMIC_DRAW to provide dynamic buffer updates and performance updates
+    glBufferData(GL_ARRAY_BUFFER, meshVertices.size() * sizeof(float), meshVertices.data(), GL_DYNAMIC_DRAW);
 
-    // maps the vertex attribute array for both the points of the vertex coords and the texture coords
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 7 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
 

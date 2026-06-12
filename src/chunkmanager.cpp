@@ -1,24 +1,11 @@
 #include "chunkmanager.h"
 #include "chunk.h"
+#include <algorithm>
+#include <cmath>
 
 
-// chunk construcotr which creates these trunks
-ChunkManager::ChunkManager() {
-    for (int x = -6; x <= 6; x++) {
-        for (int z = -6; z <= 6; z++) {
-            glm::ivec2 pos(x, z);
-            
-            // 1. Allocate the clean memory shells inside your map
-            m_activeChunks[pos] = new Chunk(x, z, &m_blockManager);
-            m_activeChunks[pos]->setWorld(this);  
-            
-            // 2. Queue them up for the pipeline stages to process step-by-step
-            m_loadList.push_back(pos);
-            m_setupList.push_back(pos);
-            m_rebuildList.push_back(pos);
-        }
-    }
-}
+// World starts empty; chunks stream in around the player each frame
+ChunkManager::ChunkManager() {}
 
 // chunk destructor
 ChunkManager::~ChunkManager() {
@@ -31,6 +18,7 @@ ChunkManager::~ChunkManager() {
 // updates these various lists
 void ChunkManager::update(Camera Camera) {
     uploadCompletedChunks();
+    updateChunkStreaming(Camera);
     updateLoadList();
     updateSetupList();
     updateRebuildList();
@@ -43,6 +31,55 @@ void ChunkManager::update(Camera Camera) {
     m_cameraView = Camera.Front;
 }
 
+void ChunkManager::updateChunkStreaming(Camera camera) {
+    int playerChunkX = (int)std::floor(camera.Position.x / CHUNK_WIDTH);
+    int playerChunkZ = (int)std::floor(camera.Position.z / CHUNK_DEPTH);
+
+    // Spawn chunks within a circular render distance
+    for (int dx = -RENDER_DISTANCE_CHUNKS; dx <= RENDER_DISTANCE_CHUNKS; dx++) {
+        for (int dz = -RENDER_DISTANCE_CHUNKS; dz <= RENDER_DISTANCE_CHUNKS; dz++) {
+            if (dx*dx + dz*dz > RENDER_DISTANCE_CHUNKS * RENDER_DISTANCE_CHUNKS) continue;
+
+            glm::ivec2 pos(playerChunkX + dx, playerChunkZ + dz);
+            if (m_activeChunks.count(pos)) continue;
+
+            Chunk* c = new Chunk(pos.x, pos.y, &m_blockManager);
+            c->setWorld(this);
+            m_activeChunks[pos] = c;
+            m_loadList.push_back(pos);
+            m_setupList.push_back(pos);
+            m_rebuildList.push_back(pos);
+            forceVisibilityUpdate = true;
+        }
+    }
+
+    // Unload chunks beyond the unload radius
+    for (auto it = m_activeChunks.begin(); it != m_activeChunks.end(); ) {
+        int dx = it->first.x - playerChunkX;
+        int dz = it->first.y - playerChunkZ;
+
+        if (dx*dx + dz*dz > UNLOAD_DISTANCE_CHUNKS * UNLOAD_DISTANCE_CHUNKS) {
+            Chunk* chunk = it->second;
+            if (chunk->hasActiveJob()) { ++it; continue; }
+
+            glm::ivec2 key = it->first;
+            auto removeKey = [&key](std::vector<glm::ivec2>& list) {
+                list.erase(std::remove(list.begin(), list.end(), key), list.end());
+            };
+            removeKey(m_loadList);
+            removeKey(m_setupList);
+            removeKey(m_rebuildList);
+            m_flagsList.erase(std::remove(m_flagsList.begin(), m_flagsList.end(), chunk), m_flagsList.end());
+
+            delete chunk;
+            it = m_activeChunks.erase(it);
+            forceVisibilityUpdate = true;
+        } else {
+            ++it;
+        }
+    }
+}
+
 void ChunkManager::updateLoadList() {
     int numOfChunksLoaded = 0;
     auto iterator = m_loadList.begin();
@@ -50,10 +87,10 @@ void ChunkManager::updateLoadList() {
         Chunk* chunk = m_activeChunks[*iterator];
         if (!chunk->isLoaded()) {
             // queues the chunk loading into the thread pool reducing stress on the CPU
-            m_threadPool.enqueue([this, chunk]() { 
-                chunk->load(); 
-                std::unique_lock<std::mutex> lock(m_completedMutex); 
-                m_completedChunks.emplace(chunk);  // pushes the chunk onto the completed chunks
+            chunk->beginJob();
+            m_threadPool.enqueue([chunk]() {
+                chunk->load();
+                chunk->endJob();
             });
             numOfChunksLoaded++;
             forceVisibilityUpdate = true;
@@ -89,10 +126,11 @@ void ChunkManager::updateRebuildList() {
     while (iterator != m_rebuildList.end() && numOfRebuiltChunks != NUM_OF_CHUNKS_LOADED_PER_FRAME) {
         Chunk* pChunk = m_activeChunks[*iterator];
         if (pChunk->isLoaded() && pChunk->isSetup()) {
-            m_threadPool.enqueue([this, pChunk] { 
-                pChunk->rebuildMesh(); 
+            pChunk->beginJob();
+            m_threadPool.enqueue([this, pChunk] {
+                pChunk->rebuildMesh();
                 std::unique_lock<std::mutex> lock(m_completedMutex);
-                m_completedChunks.emplace(pChunk); // pushes the pChunk onto the completed chunks
+                m_completedChunks.emplace(pChunk);
             });
             m_flagsList.push_back(pChunk);
             
@@ -287,6 +325,9 @@ void ChunkManager::uploadCompletedChunks() {
     while (!m_completedChunks.empty()) {
         Chunk* chunk = m_completedChunks.front();
         m_completedChunks.pop();
+        lock.unlock();
         chunk->uploadToGPU();
+        chunk->endJob();
+        lock.lock();
     }
 }

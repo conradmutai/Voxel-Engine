@@ -19,7 +19,9 @@ struct KeyHash {
 };
 
 const int NUM_OF_CHUNKS_LOADED_PER_FRAME = 200;
-const int MAX_RENDER_DISTANCE = 1000;
+const int RENDER_DISTANCE_CHUNKS = 8;
+const int UNLOAD_DISTANCE_CHUNKS = 10;
+const float MAX_RENDER_DISTANCE = RENDER_DISTANCE_CHUNKS * CHUNK_WIDTH;
 
 class ChunkManager {
     public: 
@@ -30,6 +32,7 @@ class ChunkManager {
         void update(Camera Camera); // takes in the address of the current camera position to carry out tasks like rendering based on its position
 
         // all the updates that store, load, update the chunks
+        void updateChunkStreaming(Camera camera);
         void updateLoadList();
         void updateSetupList();
         void updateRebuildList();

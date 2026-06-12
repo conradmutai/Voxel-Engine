@@ -6,6 +6,7 @@
 #include <glm/glm.hpp>
 #include <vector>
 #include <cstdint>
+#include <atomic>
 
 const int CHUNK_WIDTH = 16;
 const int CHUNK_HEIGHT = 256;
@@ -39,6 +40,10 @@ class Chunk {
 
         void uploadToGPU();
 
+        void beginJob() { m_activeJobs++; }
+        void endJob()   { m_activeJobs--; }
+        bool hasActiveJob() const { return m_activeJobs > 0; }
+
         int getX();
         int getY();
         int getZ();
@@ -58,6 +63,8 @@ class Chunk {
         uint8_t* lightMap;
 
         ChunkManager* m_world = nullptr;
+
+        std::atomic<int> m_activeJobs{0};
 
         // private pointer to hold manager
         BlockManager* manager;
