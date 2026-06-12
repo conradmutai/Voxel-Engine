@@ -3,10 +3,13 @@
 
 #include "camera.h"
 #include "chunk.h"
+#include "threadpool.h"
 
 #include <glad/glad.h>
 #include <unordered_map>
 #include <glm/glm.hpp>
+#include <mutex>
+#include <queue>
 
 // A custom hash function to allow glm::ivec2 (or a custom struct) to be used as a Key
 struct KeyHash {
@@ -35,12 +38,23 @@ class ChunkManager {
         void updateVisibilityList(Camera Camera);
         void updateRenderList(); 
 
+        // uploads the completed chunks into the main thread
+        void uploadCompletedChunks();
+
         uint8_t getBlockWorld(int wx, int wy, int wz);
         int getLightWorld(int wx, int wy, int wz);
 
         const std::vector<Chunk*>& getRenderList() const;
 
     private:
+        // initialzied the threadpool for the chunk manager
+        ThreadPool m_threadPool;
+
+        // mechanisms to let the main thread know when we're edone
+        std::mutex m_chunksMutex;
+        std::queue<Chunk*> m_completedChunks;
+        std::mutex m_completedMutex;
+
         // master world tracking structure
         std::unordered_map<glm::ivec2, Chunk*, KeyHash> m_activeChunks;
 

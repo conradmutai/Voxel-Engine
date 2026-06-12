@@ -37,11 +37,17 @@ class Chunk {
 
         void setWorld(ChunkManager* world);
 
+        void uploadToGPU();
+
         int getX();
         int getY();
         int getZ();
 
     private:
+        bool m_isReadyToRender = false;
+
+        std::vector<float> meshVertices;
+
         bool m_isSetup = false;
         uint8_t* blocks;
 

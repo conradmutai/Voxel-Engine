@@ -1,6 +1,8 @@
 #include "chunkmanager.h"
 #include "chunk.h"
 
+
+// chunk construcotr which creates these trunks
 ChunkManager::ChunkManager() {
     for (int x = -6; x <= 6; x++) {
         for (int z = -6; z <= 6; z++) {
@@ -18,6 +20,7 @@ ChunkManager::ChunkManager() {
     }
 }
 
+// chunk destructor
 ChunkManager::~ChunkManager() {
     for (auto const& pair : m_activeChunks) {
         delete pair.second; // Safely releases the Chunk* memory allocation
@@ -25,7 +28,9 @@ ChunkManager::~ChunkManager() {
     m_activeChunks.clear();
 }
 
+// updates these various lists
 void ChunkManager::update(Camera Camera) {
+    uploadCompletedChunks();
     updateLoadList();
     updateSetupList();
     updateRebuildList();
@@ -44,7 +49,12 @@ void ChunkManager::updateLoadList() {
     while (iterator != m_loadList.end() && numOfChunksLoaded != NUM_OF_CHUNKS_LOADED_PER_FRAME) {
         Chunk* chunk = m_activeChunks[*iterator];
         if (!chunk->isLoaded()) {
-            chunk->load();
+            // queues the chunk loading into the thread pool reducing stress on the CPU
+            m_threadPool.enqueue([this, chunk]() { 
+                chunk->load(); 
+                std::unique_lock<std::mutex> lock(m_completedMutex); 
+                m_completedChunks.emplace(chunk);  // pushes the chunk onto the completed chunks
+            });
             numOfChunksLoaded++;
             forceVisibilityUpdate = true;
         }
@@ -69,15 +79,23 @@ void ChunkManager::updateSetupList() {
     }
 }
 
+// updates the rebuild list on if the chunk is updated (player has placed or broken a block)
 void ChunkManager::updateRebuildList() {
+    // keeps track of the num of rebuilt chunks and initializes the iterator
     int numOfRebuiltChunks = 0;
     auto iterator = m_rebuildList.begin();
+
+    // iterates through all the chunks and inputs them into the rebuild list if it is in frame and is not greater than the max num of chunks to load per each frame
     while (iterator != m_rebuildList.end() && numOfRebuiltChunks != NUM_OF_CHUNKS_LOADED_PER_FRAME) {
         Chunk* pChunk = m_activeChunks[*iterator];
         if (pChunk->isLoaded() && pChunk->isSetup()) {
-            pChunk->rebuildMesh();
+            m_threadPool.enqueue([this, pChunk] { 
+                pChunk->rebuildMesh(); 
+                std::unique_lock<std::mutex> lock(m_completedMutex);
+                m_completedChunks.emplace(pChunk); // pushes the pChunk onto the completed chunks
+            });
             m_flagsList.push_back(pChunk);
-
+            
             glm::ivec2 chunkPos = *iterator;
             Chunk* chunkXMinus = getChunk(chunkPos.x - 1, chunkPos.y);
             Chunk* chunkXPlus  = getChunk(chunkPos.x + 1, chunkPos.y);
@@ -97,23 +115,30 @@ void ChunkManager::updateRebuildList() {
     }
 }
 
+// updates the unload list meaning that it informs the engine on what chunks to offload
 void ChunkManager::updateUnloadList() {
     std::vector<glm::ivec2>::iterator iterator;
     
+    // iterates through the unload loist 
     for (iterator = m_unloadList.begin(); iterator != m_unloadList.end(); ++iterator) {
+        // grabs the chunk position (x,y) coords
         glm::ivec2 chunkPos = *iterator;
         Chunk* pChunk = m_activeChunks[chunkPos];
 
+        // if the chunk is loaded then we unload it
         if (pChunk -> isLoaded()) {
             pChunk -> unload();
             forceVisibilityUpdate = true;
         }
     }
 
+    // clear the list once this is done
     m_unloadList.clear();
 }
 
+// updates the visibility list to allow the chunk to load based if it is present
 void ChunkManager::updateVisibilityList(Camera Camera) {
+    // if the camera position is equal to the actual camera positionand the camera view is facing the front camera then return
     if (m_cameraPos == Camera.Position && m_cameraView == Camera.Front && forceVisibilityUpdate == false) {
         return;
     }
@@ -122,6 +147,7 @@ void ChunkManager::updateVisibilityList(Camera Camera) {
     forceVisibilityUpdate = false; 
 
     glm::vec3 lookDir = glm::normalize(Camera.Front);
+    std::lock_guard<std::mutex> lock(m_chunksMutex);
 
     for (auto const& pair : m_activeChunks) {
         glm::ivec2 chunkPos = pair.first;
@@ -175,6 +201,7 @@ void ChunkManager::updateRenderList() {
     m_renderList.clear();
 
     std::vector<std::pair<float, Chunk*>> distancePass;
+    std::lock_guard<std::mutex> lock(m_chunksMutex);
 
     for (const glm::ivec2& chunkPos : m_visibilityList) {
         Chunk* pChunk = m_activeChunks[chunkPos];
@@ -210,6 +237,8 @@ void ChunkManager::updateRenderList() {
 
 // private helper function to get chunk
 Chunk* ChunkManager::getChunk(int gridX, int gridZ) {
+    std::lock_guard<std::mutex> lock(m_chunksMutex);
+
     // Bundle the incoming integers into a 2D grid vector key
     glm::ivec2 key(gridX, gridZ);
 
@@ -250,4 +279,14 @@ int ChunkManager::getLightWorld(int wx, int wy, int wz) {
 
 const std::vector<Chunk*>& ChunkManager::getRenderList() const { 
     return m_renderList; 
+}
+
+// function made to lock the completed mutex and then upload the chunks to the main thread to render
+void ChunkManager::uploadCompletedChunks() {
+    std::unique_lock<std::mutex> lock(m_completedMutex);
+    while (!m_completedChunks.empty()) {
+        Chunk* chunk = m_completedChunks.front();
+        m_completedChunks.pop();
+        chunk->uploadToGPU();
+    }
 }

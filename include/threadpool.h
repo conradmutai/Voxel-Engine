@@ -1,7 +1,6 @@
 #pragma once
 #define THREADPOOL_H
 
-
 #include <condition_variable>
 #include <functional>
 #include <mutex>
@@ -37,7 +36,7 @@ class ThreadPool {
                                 return;
                             }
 
-                            task = move(jobQueue.front());
+                            task = std::move(jobQueue.front());
                             jobQueue.pop();
                         }
 

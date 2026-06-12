@@ -201,13 +201,8 @@ void Chunk::sunlightLevel() {
 }
 
 void Chunk::render() {
-    // if the model isDirty then we jump to generateMesh()
-    if(isDirty) {
-        generateMesh();
-    }
-
     // checks to see if we are dealing with an air block
-    if(vertexCount > 0) {
+     if (m_isReadyToRender && vertexCount > 0) {
         glBindVertexArray(VAO);
         glDrawArrays(GL_TRIANGLES, 0, vertexCount);
     }
@@ -215,7 +210,7 @@ void Chunk::render() {
 
 void Chunk::generateMesh() {
     // creates a a mesh vertices
-    std::vector<float> meshVertices;
+    meshVertices.clear();
     
     // iterates over all ways of depth, height, width (in order) to add block to the vertex
     for (int z = 0; z < CHUNK_DEPTH; z++) {
@@ -231,6 +226,11 @@ void Chunk::generateMesh() {
     // dividides by 6 to get the actual count of the vertices
     vertexCount = meshVertices.size() / 7;
 
+    isDirty = false;
+}
+
+// uploads a chunk to the GPU
+void Chunk::uploadToGPU() {
     // binds the vertex array output
     glBindVertexArray(VAO);
 
@@ -239,19 +239,19 @@ void Chunk::generateMesh() {
     glBufferData(GL_ARRAY_BUFFER, meshVertices.size() * sizeof(float), meshVertices.data(), GL_DYNAMIC_DRAW); // changed from GL_STATIC_DRAW to GL_DYNAMIC_DRAW to provide dynamic buffer updates and performance updates
 
     // maps the vertex attribute array for both the points of the vertex coords and the texture coords
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 7 * sizeof(float), (void*) 0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 7 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
 
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 7 * sizeof(float), (void*) (3 * sizeof(float)));
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 7 * sizeof(float), (void*)(3 * sizeof(float)));
     glEnableVertexAttribArray(1);
 
-    glVertexAttribPointer(2, 1, GL_FLOAT, GL_FALSE, 7 * sizeof(float), (void*) (5 * sizeof(float)));
+    glVertexAttribPointer(2, 1, GL_FLOAT, GL_FALSE, 7 * sizeof(float), (void*)(5 * sizeof(float)));
     glEnableVertexAttribArray(2);
 
-    glVertexAttribPointer(3, 1, GL_FLOAT, GL_FALSE, 7 * sizeof(float), (void*) (6 * sizeof(float)));
+    glVertexAttribPointer(3, 1, GL_FLOAT, GL_FALSE, 7 * sizeof(float), (void*)(6 * sizeof(float)));
     glEnableVertexAttribArray(3);
 
-    isDirty = false;
+    m_isReadyToRender = true;
 }
 
 int Chunk::generateAmbientOcclusion(int localX, int localY, int localZ, enum faceDirection faceDir, int vertexID) {
