@@ -26,7 +26,7 @@ class ChunkSerializer {
         std::string m_saveDirectory;
         
         // helper function
-        std::string getFilePath(glm::ivec3 chunkPos);
+        std::string getFilePath(glm::ivec2 chunkPos);
 
         // compression and decompression algorithms
         std::vector<uint8_t> compress(const uint8_t data, size_t size);
