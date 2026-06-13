@@ -44,6 +44,15 @@ Chunk::~Chunk() {
     glDeleteBuffers(1, &VBO);
 }
 
+const uint8_t* Chunk::getBlockData() const { return blocks; }
+
+void Chunk::setBlockData(const uint8_t* data, size_t size) {
+    if (blocks == nullptr) {
+        blocks = new uint8_t[CHUNK_WIDTH * CHUNK_HEIGHT * CHUNK_DEPTH]();
+    }
+    memcpy(blocks, data, size);
+}
+
 void Chunk::load() {
     blocks = new uint8_t[CHUNK_WIDTH * CHUNK_HEIGHT * CHUNK_DEPTH]();
     lightMap = new uint8_t[CHUNK_WIDTH * CHUNK_HEIGHT * CHUNK_DEPTH]();
@@ -662,5 +671,5 @@ void Chunk::addBlockVertices(std::vector<float>& meshVertices, int localX, int l
             };
             meshVertices.insert(meshVertices.end(), std::begin(face), std::end(face));
         }
-}
+    }
 }

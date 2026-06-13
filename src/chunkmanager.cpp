@@ -1,11 +1,16 @@
 #include "chunkmanager.h"
 #include "chunk.h"
+
+#include <filesystem>
 #include <algorithm>
 #include <cmath>
+#include <chunkserializer.h>
 
 
 // World starts empty; chunks stream in around the player each frame
-ChunkManager::ChunkManager() {}
+ChunkManager::ChunkManager() {
+    std::filesystem::create_directories("saves/chunks/");
+}
 
 // chunk destructor
 ChunkManager::~ChunkManager() {
@@ -71,6 +76,9 @@ void ChunkManager::updateChunkStreaming(Camera camera) {
             removeKey(m_rebuildList);
             m_flagsList.erase(std::remove(m_flagsList.begin(), m_flagsList.end(), chunk), m_flagsList.end());
 
+            if (chunk->isLoaded()) {
+                m_serializer.save(chunk, it->first);
+            }
             delete chunk;
             it = m_activeChunks.erase(it);
             forceVisibilityUpdate = true;
@@ -87,10 +95,15 @@ void ChunkManager::updateLoadList() {
         Chunk* chunk = m_activeChunks[*iterator];
         if (!chunk->isLoaded()) {
             // queues the chunk loading into the thread pool reducing stress on the CPU
-            chunk->beginJob();
-            m_threadPool.enqueue([chunk]() {
-                chunk->load();
-                chunk->endJob();
+            glm::ivec2 pos = *iterator;
+            m_threadPool.enqueue([this, chunk, pos]() {
+                if (!m_serializer.load(chunk, pos)) {
+                    chunk->load();
+                }
+                chunk->setup();
+                chunk->rebuildMesh();
+                std::unique_lock<std::mutex> qlock(m_completedMutex);
+                m_completedChunks.emplace(chunk);
             });
             numOfChunksLoaded++;
             forceVisibilityUpdate = true;

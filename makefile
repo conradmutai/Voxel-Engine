@@ -10,7 +10,7 @@ LDFLAGS = -L./lib -lglfw3 -framework Cocoa -framework OpenGL -framework IOKit -f
 TARGET = voxel_game
 
 # Updated object list to include the new classes
-OBJ = main.o glad.o stb_image.o texture.o window.o chunk.o blockmanager.o chunkmanager.o raycaster.o
+OBJ = main.o glad.o stb_image.o texture.o window.o chunk.o blockmanager.o chunkmanager.o raycaster.o chunkserializer.o
 
 # Default rule
 all: $(TARGET)
@@ -40,6 +40,9 @@ blockmanager.o: src/blockmanager.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 raycaster.o: src/raycaster.cpp
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+chunkserializer.o: src/chunkserializer.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 # Compile C source files

@@ -1,7 +1,13 @@
 #pragma once
 #define CHUNKSERIALIZER_H
 
-#include "chunk.h"
+#include <string>
+#include <vector>
+#include <cstdint>
+#include <glm/glm.hpp>
+
+// forward declaration — breaks the circular include
+class Chunk;
 
 struct Marker {
     bool signal;   // 1 bit — 0 = raw run, 1 = repeated run
@@ -17,7 +23,7 @@ struct Marker {
 
 class ChunkSerializer {
     public:
-        ChunkSerializer();
+        ChunkSerializer(const std::string& saveDirectory);
         ~ChunkSerializer();
 
         bool save(Chunk* chunk, glm::ivec2 chunkPos);
@@ -29,6 +35,6 @@ class ChunkSerializer {
         std::string getFilePath(glm::ivec2 chunkPos);
 
         // compression and decompression algorithms
-        std::vector<uint8_t> compress(const uint8_t data, size_t size);
+        std::vector<uint8_t> compress(const uint8_t* data, size_t size);
         std::vector<uint8_t> decompress(const std::vector<uint8_t>& compress, size_t size);
 };

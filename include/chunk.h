@@ -7,6 +7,7 @@
 #include <vector>
 #include <cstdint>
 #include <atomic>
+#include "chunkserializer.h"
 
 const int CHUNK_WIDTH = 16;
 const int CHUNK_HEIGHT = 256;
@@ -43,6 +44,9 @@ class Chunk {
         void beginJob() { m_activeJobs++; }
         void endJob()   { m_activeJobs--; }
         bool hasActiveJob() const { return m_activeJobs > 0; }
+
+        const uint8_t* getBlockData() const;
+        void setBlockData(const uint8_t* data, size_t size);
 
         int getX();
         int getY();

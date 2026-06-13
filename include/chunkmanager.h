@@ -4,6 +4,7 @@
 #include "camera.h"
 #include "chunk.h"
 #include "threadpool.h"
+#include "chunkserializer.h"
 
 #include <glad/glad.h>
 #include <unordered_map>
@@ -50,6 +51,8 @@ class ChunkManager {
         const std::vector<Chunk*>& getRenderList() const;
 
     private:
+        ChunkSerializer m_serializer{"saves/chunks/"};
+
         // initialzied the threadpool for the chunk manager
         ThreadPool m_threadPool;
 
@@ -83,4 +86,5 @@ class ChunkManager {
 
         // helper functions
         Chunk* getChunk(int gridX, int gridZ);
+        Chunk* getChunkUnlocked(int gridX, int gridZ); // caller must hold m_chunksMutex
 };
