@@ -25,8 +25,6 @@ void ChunkManager::update(Camera Camera) {
     uploadCompletedChunks();
     updateChunkStreaming(Camera);
     updateLoadList();
-    updateSetupList();
-    updateRebuildList();
     updateUnloadList();
 
     updateVisibilityList(Camera);
@@ -96,6 +94,8 @@ void ChunkManager::updateLoadList() {
         if (!chunk->isLoaded()) {
             // queues the chunk loading into the thread pool reducing stress on the CPU
             glm::ivec2 pos = *iterator;
+
+            chunk->beginJob();
             m_threadPool.enqueue([this, chunk, pos]() {
                 if (!m_serializer.load(chunk, pos)) {
                     chunk->load();

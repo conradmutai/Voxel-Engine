@@ -51,7 +51,7 @@ class ChunkManager {
         const std::vector<Chunk*>& getRenderList() const;
 
     private:
-        ChunkSerializer m_serializer{"saves/chunks/"};
+        ChunkSerializer m_serializer;
 
         // initialzied the threadpool for the chunk manager
         ThreadPool m_threadPool;

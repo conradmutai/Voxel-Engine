@@ -1,8 +1,7 @@
 #define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
 #include <glad/glad.h>
-#include <libgen.h>
-#include <mach-o/dyld.h>
+#include "utils.h"
 
 #include "blockmanager.h"
 #include "shader.h"
@@ -17,16 +16,6 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/geometric.hpp>
 #include <chunkmanager.h>
-
-// helper method to get file path
-std::string getExecutableDir() {
-    char path[1024];
-    uint32_t size = sizeof(path);
-    if (_NSGetExecutablePath(path, &size) == 0) {
-        return std::string(dirname(path)) + "/";
-    }
-    return "./";
-};
 
 // Global Camera and Time state
 Camera camera(glm::vec3(0.0f, 70.0f, 3.0f));

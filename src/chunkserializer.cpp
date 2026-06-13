@@ -1,10 +1,11 @@
 #include "chunkserializer.h"
 #include "chunk.h"
+#include "utils.h"
 
 #include <iostream>
 
-ChunkSerializer::ChunkSerializer(const std::string& saveDirectory) {
-    m_saveDirectory = saveDirectory;
+ChunkSerializer::ChunkSerializer() {
+    m_saveDirectory = getExecutableDir() + "saves/chunks/";
 }
 
 ChunkSerializer::~ChunkSerializer() {
@@ -16,7 +17,6 @@ bool ChunkSerializer::save(Chunk* chunk, glm::ivec2 chunkPos) {
     FILE* file = std::fopen(filePath.c_str(), "wb");
 
     if (file == nullptr) {
-        std::cerr << "File doesn't exist/cannot be opened." << std::endl;
         return false;
     }
 
@@ -41,7 +41,6 @@ bool ChunkSerializer::load(Chunk* chunk, glm::ivec2 chunkPos) {
     FILE* file = std::fopen(filePath.c_str(), "rb");
 
     if (file == nullptr) {
-        std::cerr << "File doesn't exist/cannot be opened." << std::endl;
         return false;
     }
 

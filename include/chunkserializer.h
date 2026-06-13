@@ -23,7 +23,7 @@ struct Marker {
 
 class ChunkSerializer {
     public:
-        ChunkSerializer(const std::string& saveDirectory);
+        ChunkSerializer();
         ~ChunkSerializer();
 
         bool save(Chunk* chunk, glm::ivec2 chunkPos);

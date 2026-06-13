@@ -50,6 +50,11 @@ void Chunk::setBlockData(const uint8_t* data, size_t size) {
     if (blocks == nullptr) {
         blocks = new uint8_t[CHUNK_WIDTH * CHUNK_HEIGHT * CHUNK_DEPTH]();
     }
+
+    if (lightMap == nullptr) {
+        lightMap = new uint8_t[CHUNK_WIDTH * CHUNK_HEIGHT * CHUNK_DEPTH]();
+    }
+
     memcpy(blocks, data, size);
 }
 
